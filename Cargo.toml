@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = ["crates/quiz-core", "crates/site"]
+
+[workspace.package]
+edition = "2021"
+version = "0.2.0"
+license = "MIT"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1

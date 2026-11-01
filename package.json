@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/generators.test.mjs",
+    "test": "cargo test --workspace --exclude site",
+    "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {

@@ -15,12 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm test
+          targets: wasm32-unknown-unknown
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Lint (question engine)
+        run: cargo clippy -p quiz-core --all-targets -- -D warnings
+      - name: Lint (Worker, wasm)
+        run: cargo clippy -p site --target wasm32-unknown-unknown -- -D warnings
+      - name: Tests
+        run: cargo test -p quiz-core --release
 
   deploy:
     needs: test
@@ -31,13 +38,26 @@ jobs:
       url: https://maths.savvy-des.com
     steps:
       - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-bin: true
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: cloudflare/wrangler-action@v3
+      - name: Build and deploy the Rust Worker
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+      - name: Smoke test
+        run: |
+          sleep 10
+          curl -fsS https://maths.savvy-des.com/ | grep -q "Πρόκληση Διαιρετότητας"
+          curl -fsS "https://maths.savvy-des.com/api/question?cat=pow&seed=1" | grep -q '"cat":"pow"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' https://maths.savvy-des.com/api/teacher/resources)" = "401"
