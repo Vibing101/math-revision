@@ -119,6 +119,11 @@ table.st th[colspan]{background:var(--chip)}
 .fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 .2em}
 .fr>span:last-child{padding:0 .2em}
 .ov{text-decoration:overline}
+.fig{display:block;max-width:100%;height:auto;margin:10px 0;color:var(--fg)}
+.vec{position:relative;display:inline-block;padding-top:.3em}
+.vec::before{content:"";position:absolute;left:.05em;right:.2em;top:.18em;border-top:1.5px solid currentColor}
+.vec::after{content:"";position:absolute;right:.05em;top:.04em;width:.3em;height:.3em;border:solid currentColor;border-width:1.5px 1.5px 0 0;transform:rotate(45deg)}
+.qtext .tbl table.st{margin:8px 0}
 .pmrow{display:inline-flex;align-items:center;gap:6px}
 .pm{min-width:40px;padding:6px 8px}
 .fracin{display:inline-flex;flex-direction:column;gap:3px;align-items:center}
