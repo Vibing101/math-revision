@@ -274,6 +274,71 @@ pub fn tl(h: u64) -> String {
     }
 }
 
+/// Integer with a typographic minus: −5
+pub fn signed(n: i64) -> String {
+    if n < 0 {
+        format!("−{}", -n)
+    } else {
+        n.to_string()
+    }
+}
+
+/// Integer in parentheses when negative, for use inside expressions: (−5)
+pub fn par(n: i64) -> String {
+    if n < 0 {
+        format!("(−{})", -n)
+    } else {
+        n.to_string()
+    }
+}
+
+pub fn igcd(a: i64, b: i64) -> i64 {
+    gcd(a.unsigned_abs(), b.unsigned_abs()) as i64
+}
+
+/// Lowest terms with a positive denominator.
+pub fn reduce(n: i64, d: i64) -> (i64, i64) {
+    let g = igcd(n, d).max(1);
+    let (n, d) = (n / g, d / g);
+    if d < 0 {
+        (-n, -d)
+    } else {
+        (n, d)
+    }
+}
+
+/// Stacked fraction as HTML (CSS class `fr`); integers stay plain.
+pub fn fr(n: i64, d: i64) -> String {
+    let (n, d) = reduce(n, d);
+    if d == 1 {
+        return signed(n);
+    }
+    let s = if n < 0 { "−" } else { "" };
+    format!(
+        "{s}<span class=\"fr\"><span>{}</span><span>{d}</span></span>",
+        n.abs()
+    )
+}
+
+/// Same as `fr` but without reducing (to show a fraction as given).
+pub fn fr_raw(n: i64, d: i64) -> String {
+    let s = if (n < 0) != (d < 0) { "−" } else { "" };
+    format!(
+        "{s}<span class=\"fr\"><span>{}</span><span>{}</span></span>",
+        n.abs(),
+        d.abs()
+    )
+}
+
+/// Plain-text fraction: −3/4
+pub fn frac_text(n: i64, d: i64) -> String {
+    if d == 1 {
+        signed(n)
+    } else {
+        format!("{}/{d}", signed(n))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -6,7 +6,12 @@ use serde_json::Value;
 
 #[derive(Clone)]
 pub enum Kind {
+    /// Natural number (0, 1, 2, …).
     Num,
+    /// Integer, may be negative.
+    Int,
+    /// Fraction (numerator / denominator); must be given in lowest terms.
+    Frac,
     YesNo {
         yes: &'static str,
         no: &'static str,
@@ -14,6 +19,8 @@ pub enum Kind {
     /// Multi-select among the given options.
     Set {
         options: Vec<i64>,
+        /// Display text per option (e.g. letters); empty means show the numbers.
+        labels: Vec<String>,
     },
     Select {
         options: Vec<(i64, String)>,
@@ -28,6 +35,8 @@ pub enum Kind {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Answer {
     Num(i64),
+    /// Lowest terms, positive denominator.
+    Frac(i64, i64),
     Bool(bool),
     Set(Vec<i64>),
     Choice(i64),
@@ -51,6 +60,7 @@ pub enum Val {
     Blank,
     Invalid,
     Num(i64),
+    Frac(i64, i64),
     Bool(bool),
     Set(Vec<i64>),
     Choice(i64),
@@ -128,6 +138,12 @@ pub enum PublicPart {
     Num {
         label: String,
     },
+    Int {
+        label: String,
+    },
+    Frac {
+        label: String,
+    },
     Yesno {
         label: String,
         yes: &'static str,
@@ -136,6 +152,7 @@ pub enum PublicPart {
     Set {
         label: String,
         options: Vec<i64>,
+        labels: Vec<String>,
     },
     Select {
         label: String,
@@ -165,10 +182,13 @@ pub fn public(q: &Question, seed: u32) -> PublicQuestion {
                         let label = p.label.clone();
                         match &p.kind {
                             Kind::Num => PublicPart::Num { label },
+                            Kind::Int => PublicPart::Int { label },
+                            Kind::Frac => PublicPart::Frac { label },
                             Kind::YesNo { yes, no } => PublicPart::Yesno { label, yes, no },
-                            Kind::Set { options } => PublicPart::Set {
+                            Kind::Set { options, labels } => PublicPart::Set {
                                 label,
                                 options: options.clone(),
+                                labels: labels.clone(),
                             },
                             Kind::Select { options } => PublicPart::Select {
                                 label,
@@ -222,9 +242,53 @@ fn parse_int(v: &Value) -> Val {
     }
 }
 
+/// Signed integer; accepts "-", the typographic minus "−" and a leading "+".
+fn parse_signed(v: &Value) -> Val {
+    match v {
+        Value::Null => Val::Blank,
+        Value::Number(n) => n.as_i64().map(Val::Num).unwrap_or(Val::Invalid),
+        Value::String(s) => {
+            let t: String = s
+                .chars()
+                .filter(|c| !c.is_whitespace() && *c != '.')
+                .map(|c| if c == '−' || c == '–' { '-' } else { c })
+                .collect();
+            let t = t.strip_prefix('+').unwrap_or(&t).to_string();
+            if t.is_empty() {
+                Val::Blank
+            } else {
+                t.parse::<i64>()
+                    .ok()
+                    .filter(|x| x.abs() < 1_000_000_000_000)
+                    .map(Val::Num)
+                    .unwrap_or(Val::Invalid)
+            }
+        }
+        _ => Val::Invalid,
+    }
+}
+
 pub fn parse_val(kind: &Kind, v: &Value) -> Val {
     match kind {
         Kind::Num => parse_int(v),
+        Kind::Int => parse_signed(v),
+        Kind::Frac => match v {
+            Value::Object(o) => {
+                let n = parse_signed(o.get("n").unwrap_or(&Value::Null));
+                let d = parse_signed(o.get("d").unwrap_or(&Value::Null));
+                match (n, d) {
+                    (Val::Num(n), Val::Num(d)) if d != 0 => Val::Frac(n, d),
+                    (Val::Num(n), Val::Blank) => Val::Frac(n, 1),
+                    (Val::Blank, Val::Blank) => Val::Blank,
+                    _ => Val::Invalid,
+                }
+            }
+            Value::Null => Val::Blank,
+            other => match parse_signed(other) {
+                Val::Num(n) => Val::Frac(n, 1),
+                x => x,
+            },
+        },
         Kind::YesNo { .. } => match v {
             Value::Bool(b) => Val::Bool(*b),
             Value::Null => Val::Blank,
@@ -276,6 +340,10 @@ pub fn parse_val(kind: &Kind, v: &Value) -> Val {
 pub fn is_right(a: &Answer, v: &Val) -> bool {
     match (a, v) {
         (Answer::Num(x), Val::Num(y)) => x == y,
+        (Answer::Frac(an, ad), Val::Frac(n, d)) => {
+            let (n, d) = if *d < 0 { (-n, -d) } else { (*n, *d) };
+            n == *an && d == *ad
+        }
         (Answer::Bool(x), Val::Bool(y)) => x == y,
         (Answer::Choice(x), Val::Choice(y)) => x == y,
         (Answer::Set(x), Val::Set(y)) => {
@@ -345,8 +413,20 @@ pub fn check(q: &Question, values: &[Value], reveal: bool) -> CheckResult {
         vec![]
     } else {
         let mut seen = std::collections::HashSet::new();
-        (q.diagnose)(&vals)
+        // Equal value but not in lowest terms: say so for every fraction part.
+        let unreduced = parts.iter().zip(&vals).any(|(p, v)| match (&p.answer, v) {
+            (Answer::Frac(an, ad), Val::Frac(n, d)) => {
+                (*n as i128) * (*ad as i128) == (*an as i128) * (*d as i128) && (n, d) != (an, ad)
+            }
+            _ => false,
+        });
+        let extra = unreduced.then(|| Diag {
+            tag: Some("frac-reduce"),
+            msg: Some("Η τιμή είναι σωστή, αλλά γράψε το κλάσμα <b>ανάγωγο</b> (απλοποίησε όσο γίνεται, με θετικό παρονομαστή).".into()),
+        });
+        extra
             .into_iter()
+            .chain((q.diagnose)(&vals))
             .filter(|d| d.tag.is_none_or(|t| seen.insert(t)))
             .map(|d| PubDiag {
                 tag: d.tag,
@@ -371,6 +451,7 @@ pub fn check(q: &Question, values: &[Value], reveal: bool) -> CheckResult {
 pub fn answer_json(a: &Answer) -> Value {
     match a {
         Answer::Num(n) | Answer::Choice(n) => Value::from(*n),
+        Answer::Frac(n, d) => serde_json::json!({ "n": n, "d": d }),
         Answer::Bool(b) => Value::from(*b),
         Answer::Set(s) => Value::from(s.clone()),
         Answer::Pow(m) => Value::Object(
@@ -390,7 +471,18 @@ pub fn answer_text(p: &Part) -> String {
             .find(|(v, _)| v == c)
             .map(|(_, l)| l.clone())
             .unwrap_or_default(),
-        (_, Answer::Num(n)) => n.to_string(),
+        (_, Answer::Num(n)) => crate::util::signed(*n),
+        (_, Answer::Frac(n, d)) => crate::util::frac_text(*n, *d),
+        (Kind::Set { labels, options }, Answer::Set(s)) if !labels.is_empty() => s
+            .iter()
+            .filter_map(|x| {
+                options
+                    .iter()
+                    .position(|o| o == x)
+                    .map(|i| labels[i].clone())
+            })
+            .collect::<Vec<_>>()
+            .join(", "),
         (_, Answer::Set(s)) => s
             .iter()
             .map(|x| x.to_string())

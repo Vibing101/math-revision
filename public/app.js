@@ -150,8 +150,10 @@ function partHTML(p, id) {
   const lab = p.label ? `<label for="${id}">${esc(p.label)}</label>` : '';
   switch (p.type) {
     case 'num': return `${lab}<input class="num" id="${id}" inputmode="numeric" autocomplete="off">`;
+    case 'int': return `${lab}<span class="pmrow"><button class="tog pm" type="button" data-pm="${id}" aria-label="Αλλαγή προσήμου">±</button><input class="num" id="${id}" inputmode="numeric" autocomplete="off"></span>`;
+    case 'frac': return `${lab}<span class="pmrow"><button class="tog pm" type="button" data-pm="${id}-n" aria-label="Αλλαγή προσήμου">±</button><span class="fracin"><input class="num" id="${id}-n" inputmode="numeric" autocomplete="off" aria-label="αριθμητής"><input class="num" id="${id}-d" inputmode="numeric" autocomplete="off" aria-label="παρονομαστής"></span></span><span class="muted" style="font-size:.82rem">Για ακέραιο, άφησε κενό τον παρονομαστή.</span>`;
     case 'yesno': return `${lab}<button class="tog" data-yn="1" id="${id}-y" aria-pressed="false">${esc(p.yes)}</button><button class="tog" data-yn="0" id="${id}-n" aria-pressed="false">${esc(p.no)}</button>`;
-    case 'set': return `${lab}<div class="setgrid">${p.options.map((d) => `<button class="tog" data-st="${d}" id="${id}-${d}" aria-pressed="false">${d}</button>`).join('')}</div>`;
+    case 'set': return `${lab}<div class="setgrid">${p.options.map((d, i) => `<button class="tog" data-st="${d}" id="${id}-${d}" aria-pressed="false">${esc(p.labels && p.labels.length ? p.labels[i] : d)}</button>`).join('')}</div>`;
     case 'select': return `${lab}<select id="${id}"><option value="">— διάλεξε —</option>${p.options.map((o) => `<option value="${o.v}">${esc(o.l)}</option>`).join('')}</select>`;
     case 'exp': return `<div class="exprow"><span>${esc(p.prefix)}&nbsp;</span>${p.primes.map((q, i) => `${i ? '<span class="dot">·</span>' : ''}<span>${q}<input class="ex" id="${id}-${q}" inputmode="numeric" aria-label="εκθέτης του ${q}" autocomplete="off"></span>`).join('')}</div>`;
   }
@@ -171,6 +173,7 @@ function renderQ() {
   $('#home').onclick = goHome;
   app.querySelectorAll('[data-yn]').forEach((b) => (b.onclick = () => b.parentElement.querySelectorAll('[data-yn]').forEach((x) => x.setAttribute('aria-pressed', x === b))));
   app.querySelectorAll('[data-st]').forEach((b) => (b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true')));
+  app.querySelectorAll('[data-pm]').forEach((b) => (b.onclick = () => { const i = $('#' + b.dataset.pm); const v = i.value.trim(); i.value = /^[-−]/.test(v) ? v.replace(/^[-−]\s*/, '') : '−' + v; i.focus(); }));
   $('#hint').onclick = showHint; $('#check').onclick = check;
   $('#next').onclick = () => { if (round) { round.i++; if (round.i >= round.n) return endRound(); } start(round ? null : Q.fixed); };
   app.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done ? $('#next').click() : check(); } }));
@@ -189,7 +192,8 @@ async function showHint() {
 function readVal(p) {
   const id = p.id;
   switch (p.type) {
-    case 'num': { const s = $('#' + id).value.trim(); return s === '' ? null : s; }
+    case 'num': case 'int': { const s = $('#' + id).value.trim(); return s === '' ? null : s; }
+    case 'frac': { const n = $(`#${id}-n`).value.trim(), d = $(`#${id}-d`).value.trim(); return n === '' && d === '' ? null : { n: n === '' ? null : n, d: d === '' ? null : d }; }
     case 'yesno': { const y = $(`#${id}-y`).getAttribute('aria-pressed') === 'true', n = $(`#${id}-n`).getAttribute('aria-pressed') === 'true'; return y ? true : n ? false : null; }
     case 'set': return p.options.filter((d) => $(`#${id}-${d}`).getAttribute('aria-pressed') === 'true');
     case 'select': { const v = $('#' + id).value; return v === '' ? null : v; }
@@ -346,7 +350,7 @@ function worksheetHTML(ws) {
   h1{font-size:16pt;text-align:center}.q{margin:0 0 6mm;page-break-inside:avoid}.g{margin:2mm 0 0 6mm}.ln{margin:2mm 0;color:#444}.gap{display:inline-block;min-width:1.2em;border-bottom:2px solid #000;text-align:center}
   .big{font-weight:700}.muted{color:#555}.k{margin:0 0 4mm;page-break-inside:avoid}.s{font-size:9.5pt;color:#333;margin:1mm 0 0 6mm}
   table.ladder{border-collapse:collapse;margin:2px 0}table.ladder td{padding:0 8px;text-align:right}table.ladder td:first-child{border-right:2px solid #000}.ladders{display:flex;gap:14px;flex-wrap:wrap}
-  .key{page-break-before:always}@media screen{.key{border-top:2px dashed #999;margin-top:10mm;padding-top:6mm}}</style></head><body>
+  .fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;font-size:.85em;line-height:1.15}.fr>span:first-child{border-bottom:1px solid #000;padding:0 2px}.ov{text-decoration:overline}.key{page-break-before:always}@media screen{.key{border-top:2px dashed #999;margin-top:10mm;padding-top:6mm}}</style></head><body>
   <h1>${title}</h1><p>Όνομα: ……………………………… &nbsp; Ημερομηνία: ……………</p>${qs}<div class="key"><h1>Απαντήσεις</h1>${key}</div></body></html>`;
 }
 

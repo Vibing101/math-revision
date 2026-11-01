@@ -123,7 +123,9 @@ fn choices(p: &quiz_core::model::Part) -> String {
     match &p.kind {
         Kind::YesNo { yes, no } => format!("{yes} / {no}"),
         // Ranges (digits 0–9, numbers 1..n) are obvious on paper; lists are not.
-        Kind::Set { options } if !options.windows(2).all(|w| w[1] == w[0] + 1) => {
+        Kind::Set { options, labels }
+            if labels.is_empty() && !options.windows(2).all(|w| w[1] == w[0] + 1) =>
+        {
             format!(
                 "Αριθμοί: {}",
                 options

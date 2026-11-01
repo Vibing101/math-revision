@@ -5,6 +5,9 @@
 
 pub mod gen_basic;
 pub mod gen_mkd;
+pub mod gen_numbers;
+pub mod gen_rational;
+pub mod gen_sets;
 pub mod mk;
 pub mod model;
 pub mod util;
@@ -37,20 +40,58 @@ pub struct Chapter {
 }
 
 /// Book units, in book order. A new unit needs an entry here and its categories below.
-pub const CHAPTERS: &[Chapter] = &[Chapter {
-    id: "diairetotita",
-    number: 1,
-    title: "Διαιρετότητα",
-    desc: "Ευκλείδεια διαίρεση, κριτήρια, πρώτοι αριθμοί, ΜΚΔ και ΕΚΠ",
-    sections: &[
-        "Ευκλείδεια Διαίρεση",
-        "Ιδιότητες Διαιρετότητας",
-        "Κριτήρια Διαιρετότητας",
-        "Πρώτοι και Σύνθετοι Αριθμοί",
-        "ΜΚΔ και ΕΚΠ",
-        "Δραστηριότητες Ενότητας και Εμπλουτισμού",
-    ],
-}];
+pub const CHAPTERS: &[Chapter] = &[
+    Chapter {
+        id: "synola",
+        number: 1,
+        title: "Σύνολα",
+        desc: "Η έννοια του συνόλου, σχέσεις και πράξεις συνόλων",
+        sections: &["Η Έννοια του Συνόλου", "Σχέσεις Συνόλων", "Πράξεις Συνόλων"],
+    },
+    Chapter {
+        id: "arithmoi",
+        number: 2,
+        title: "Αριθμοί",
+        desc: "Δυνάμεις, δυαδικό σύστημα, αλγεβρικές παραστάσεις, εξισώσεις",
+        sections: &[
+            "Δυνάμεις",
+            "Συστήματα Αρίθμησης",
+            "Αλγεβρικές Παραστάσεις",
+            "Αριθμητική Τιμή Αλγεβρικής Παράστασης",
+            "Ισότητα – Ιδιότητες Ισοτήτων",
+            "Η Έννοια της Εξίσωσης",
+        ],
+    },
+    Chapter {
+        id: "diairetotita",
+        number: 3,
+        title: "Διαιρετότητα",
+        desc: "Ευκλείδεια διαίρεση, κριτήρια, πρώτοι αριθμοί, ΜΚΔ και ΕΚΠ",
+        sections: &[
+            "Ευκλείδεια Διαίρεση",
+            "Ιδιότητες Διαιρετότητας",
+            "Κριτήρια Διαιρετότητας",
+            "Πρώτοι και Σύνθετοι Αριθμοί",
+            "ΜΚΔ και ΕΚΠ",
+            "Δραστηριότητες Ενότητας και Εμπλουτισμού",
+        ],
+    },
+    Chapter {
+        id: "rhtoi",
+        number: 4,
+        title: "Ακέραιοι – Ρητοί Αριθμοί",
+        desc: "Απόλυτη τιμή, πράξεις με πρόσημα, δυνάμεις, περιοδικοί, εξισώσεις",
+        sections: &[
+            "Ρητοί Αριθμοί – Απόλυτη Τιμή",
+            "Σύγκριση Ρητών Αριθμών",
+            "Πρόσθεση και Αφαίρεση Ρητών",
+            "Πολλαπλασιασμός και Διαίρεση Ρητών",
+            "Δυνάμεις Ρητών Αριθμών",
+            "Περιοδικοί Ρητοί Αριθμοί",
+            "Επίλυση Εξισώσεων στο Σύνολο των Ρητών",
+        ],
+    },
+];
 
 pub fn chapter_categories(chapter: &str) -> Vec<&'static str> {
     CATEGORIES
@@ -61,6 +102,70 @@ pub fn chapter_categories(chapter: &str) -> Vec<&'static str> {
 }
 
 pub const CATEGORIES: &[Category] = &[
+    Category {
+        id: "set-def",
+        chapter: "synola",
+        title: "Η έννοια του συνόλου",
+        desc: "Αναγραφή, ∈ και ∉, πληθικός αριθμός",
+        section: "Η Έννοια του Συνόλου",
+        focus: false,
+    },
+    Category {
+        id: "set-rel",
+        chapter: "synola",
+        title: "Σχέσεις συνόλων",
+        desc: "Ίσα σύνολα, υποσύνολα",
+        section: "Σχέσεις Συνόλων",
+        focus: false,
+    },
+    Category {
+        id: "set-ops",
+        chapter: "synola",
+        title: "Πράξεις συνόλων",
+        desc: "Ένωση, τομή, συμπλήρωμα, βέννεια",
+        section: "Πράξεις Συνόλων",
+        focus: false,
+    },
+    Category {
+        id: "powers",
+        chapter: "arithmoi",
+        title: "Δυνάμεις",
+        desc: "Υπολογισμός και σειρά πράξεων",
+        section: "Δυνάμεις",
+        focus: false,
+    },
+    Category {
+        id: "base2",
+        chapter: "arithmoi",
+        title: "Δυαδικό σύστημα",
+        desc: "Από και προς το δεκαδικό",
+        section: "Συστήματα Αρίθμησης",
+        focus: false,
+    },
+    Category {
+        id: "alg",
+        chapter: "arithmoi",
+        title: "Αλγεβρικές παραστάσεις",
+        desc: "Απλοποίηση και μετάφραση φράσεων",
+        section: "Αλγεβρικές Παραστάσεις",
+        focus: false,
+    },
+    Category {
+        id: "val",
+        chapter: "arithmoi",
+        title: "Αριθμητική τιμή",
+        desc: "Αντικατάσταση μεταβλητών",
+        section: "Αριθμητική Τιμή Αλγεβρικής Παράστασης",
+        focus: false,
+    },
+    Category {
+        id: "eq",
+        chapter: "arithmoi",
+        title: "Εξισώσεις",
+        desc: "Λύση, επαλήθευση, προβλήματα",
+        section: "Η Έννοια της Εξίσωσης",
+        focus: false,
+    },
     Category {
         id: "eucl",
         chapter: "diairetotita",
@@ -165,10 +270,100 @@ pub const CATEGORIES: &[Category] = &[
         section: "Δραστηριότητες Εμπλουτισμού",
         focus: false,
     },
+    Category {
+        id: "rat-abs",
+        chapter: "rhtoi",
+        title: "Απόλυτη τιμή και σύγκριση",
+        desc: "|α|, αντίθετοι, < και >",
+        section: "Ρητοί Αριθμοί – Απόλυτη Τιμή · Σύγκριση",
+        focus: false,
+    },
+    Category {
+        id: "rat-add",
+        chapter: "rhtoi",
+        title: "Πρόσθεση και αφαίρεση",
+        desc: "Ομόσημοι, ετερόσημοι, − (−α)",
+        section: "Πρόσθεση και Αφαίρεση Ρητών",
+        focus: false,
+    },
+    Category {
+        id: "rat-mul",
+        chapter: "rhtoi",
+        title: "Πολλαπλασιασμός και διαίρεση",
+        desc: "Κανόνας των προσήμων",
+        section: "Πολλαπλασιασμός και Διαίρεση Ρητών",
+        focus: false,
+    },
+    Category {
+        id: "rat-pow",
+        chapter: "rhtoi",
+        title: "Δυνάμεις ρητών",
+        desc: "(−2)⁴ ή −2⁴;",
+        section: "Δυνάμεις Ρητών Αριθμών",
+        focus: false,
+    },
+    Category {
+        id: "rat-ops",
+        chapter: "rhtoi",
+        title: "Παραστάσεις με ρητούς",
+        desc: "Σειρά πράξεων με πρόσημα",
+        section: "Πράξεις Ρητών",
+        focus: false,
+    },
+    Category {
+        id: "rat-per",
+        chapter: "rhtoi",
+        title: "Περιοδικοί αριθμοί",
+        desc: "Δεκαδικός ή περιοδικός; Σε κλάσμα",
+        section: "Περιοδικοί Ρητοί Αριθμοί",
+        focus: false,
+    },
+    Category {
+        id: "rat-eq",
+        chapter: "rhtoi",
+        title: "Εξισώσεις στους ρητούς",
+        desc: "Μεταφορά όρων, αρνητικοί συντελεστές",
+        section: "Επίλυση Εξισώσεων στο Σύνολο των Ρητών",
+        focus: false,
+    },
 ];
 
 /// Teacher-facing labels for the mistake tags returned by `check`.
 pub const TAGS: &[(&str, &str)] = &[
+    (
+        "set-elem",
+        "Σύνολα: στοιχείο που δεν έχει την ιδιότητα (∈ / ∉)",
+    ),
+    (
+        "set-dup",
+        "Σύνολα: μέτρησε δύο φορές στοιχεία που επαναλαμβάνονται",
+    ),
+    ("set-sub", "Σύνολα: υποσύνολα και ίσα σύνολα"),
+    ("set-double", "Σύνολα: δεν αφαίρεσε την τομή στο ν(Α ∪ Β)"),
+    ("set-empty", "Σύνολα: έβαλε το ∅ μαζί με στοιχεία"),
+    ("set-union-inter", "Σύνολα: μπέρδεψε ένωση με τομή"),
+    ("pow-zero", "Δυνάμεις: α⁰ = 1"),
+    ("order", "Σειρά των πράξεων"),
+    (
+        "bin-digit",
+        "Δυαδικό: χρησιμοποίησε ψηφία εκτός από 0 και 1",
+    ),
+    ("bin-rev", "Δυαδικό: έγραψε τα ψηφία ανάποδα"),
+    (
+        "distrib",
+        "Επιμεριστική ιδιότητα: δεν πολλαπλασίασε κάθε όρο",
+    ),
+    ("alg-words", "Μετάφραση φράσης σε αλγεβρική παράσταση"),
+    ("val-sq", "Αριθμητική τιμή: x² αντί για x·x"),
+    ("eq-inverse", "Εξισώσεις: λάθος αντίστροφη πράξη"),
+    ("abs", "Απόλυτη τιμή αρνητική"),
+    ("neg-compare", "Σύγκριση αρνητικών με βάση την απόλυτη τιμή"),
+    ("sign", "Λάθος πρόσημο"),
+    ("minus-minus", "Αφαίρεση αρνητικού: − (−α) = + α"),
+    ("neg-pow", "−2⁴ αντί για (−2)⁴"),
+    ("periodic", "Περιοδικοί αριθμοί"),
+    ("eq-move", "Εξισώσεις: δεν άλλαξε πρόσημο στη μεταφορά όρου"),
+    ("frac-reduce", "Κλάσμα που δεν απλοποιήθηκε"),
     (
         "lcm-min",
         "ΕΚΠ: πήρε τον μικρότερο εκθέτη αντί για τον μεγαλύτερο",
@@ -267,6 +462,21 @@ pub fn generate(cat: &str, seed: u32) -> Option<Question> {
         "time" => gen_mkd::time(&mut r),
         "years" => gen_mkd::years(&mut r),
         "chal" => gen_mkd::chal(&mut r),
+        "set-def" => gen_sets::set_def(&mut r),
+        "set-rel" => gen_sets::set_rel(&mut r),
+        "set-ops" => gen_sets::set_ops(&mut r),
+        "powers" => gen_numbers::powers(&mut r),
+        "base2" => gen_numbers::base2(&mut r),
+        "alg" => gen_numbers::alg(&mut r),
+        "val" => gen_numbers::val(&mut r),
+        "eq" => gen_numbers::eq(&mut r),
+        "rat-abs" => gen_rational::rat_abs(&mut r),
+        "rat-add" => gen_rational::rat_add(&mut r),
+        "rat-mul" => gen_rational::rat_mul(&mut r),
+        "rat-pow" => gen_rational::rat_pow(&mut r),
+        "rat-ops" => gen_rational::rat_ops(&mut r),
+        "rat-per" => gen_rational::rat_per(&mut r),
+        "rat-eq" => gen_rational::rat_eq(&mut r),
         _ => return None,
     };
     Some(q)
@@ -328,7 +538,7 @@ mod tests {
                 // set/select options contain the answer
                 for p in q.parts() {
                     match (&p.kind, &p.answer) {
-                        (model::Kind::Set { options }, model::Answer::Set(a)) => {
+                        (model::Kind::Set { options, .. }, model::Answer::Set(a)) => {
                             assert!(a.iter().all(|x| options.contains(x)))
                         }
                         (model::Kind::Select { options }, model::Answer::Choice(a)) => {

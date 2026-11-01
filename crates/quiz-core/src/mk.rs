@@ -35,6 +35,7 @@ pub fn set(options: Vec<u64>, ans: Vec<u64>) -> Part {
         label: String::new(),
         kind: Kind::Set {
             options: options.iter().map(|x| *x as i64).collect(),
+            labels: vec![],
         },
         answer: Answer::Set(ans.iter().map(|x| *x as i64).collect()),
     }
@@ -110,4 +111,46 @@ pub fn yn(b: bool) -> &'static str {
     } else {
         "δεν "
     }
+}
+
+/// Multi-select over text options (e.g. letters); the answer is option indices.
+pub fn set_labeled(labels: Vec<String>, ans: Vec<usize>) -> Part {
+    Part {
+        label: String::new(),
+        kind: Kind::Set {
+            options: (0..labels.len() as i64).collect(),
+            labels,
+        },
+        answer: Answer::Set(ans.iter().map(|x| *x as i64).collect()),
+    }
+}
+/// Signed integer answer.
+pub fn int(label: impl Into<String>, a: i64) -> Part {
+    Part {
+        label: label.into(),
+        kind: Kind::Int,
+        answer: Answer::Num(a),
+    }
+}
+/// Fraction answer, stored in lowest terms.
+pub fn frac(label: impl Into<String>, n: i64, d: i64) -> Part {
+    let (n, d) = crate::util::reduce(n, d);
+    Part {
+        label: label.into(),
+        kind: Kind::Frac,
+        answer: Answer::Frac(n, d),
+    }
+}
+pub fn sign_select(label: impl Into<String>, ans: std::cmp::Ordering) -> Part {
+    use std::cmp::Ordering::*;
+    let v = match ans {
+        Less => 0,
+        Equal => 1,
+        Greater => 2,
+    };
+    select(
+        label,
+        vec![(0, "<".into()), (1, "=".into()), (2, ">".into())],
+        v,
+    )
 }
