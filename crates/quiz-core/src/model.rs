@@ -12,6 +12,18 @@ pub enum Kind {
     Int,
     /// Fraction (numerator / denominator); must be given in lowest terms.
     Frac,
+    /// Several integers between fixed text pieces, e.g. "□x² + □x + □".
+    /// `unordered`: the integers may be given in any order (roots, factors).
+    Slots {
+        pieces: Vec<String>,
+        unordered: bool,
+    },
+    /// a√b, must be simplified (b without square factors).
+    Surd,
+    /// Decimal number, accepted within `tol`.
+    Dec {
+        tol: f64,
+    },
     YesNo {
         yes: &'static str,
         no: &'static str,
@@ -37,6 +49,10 @@ pub enum Answer {
     Num(i64),
     /// Lowest terms, positive denominator.
     Frac(i64, i64),
+    Ints(Vec<i64>),
+    /// a√b with b square-free (b = 1 for whole numbers).
+    Surd(i64, i64),
+    Dec(f64),
     Bool(bool),
     Set(Vec<i64>),
     Choice(i64),
@@ -61,6 +77,9 @@ pub enum Val {
     Invalid,
     Num(i64),
     Frac(i64, i64),
+    Ints(Vec<i64>),
+    Surd(i64, i64),
+    Dec(f64),
     Bool(bool),
     Set(Vec<i64>),
     Choice(i64),
@@ -144,6 +163,16 @@ pub enum PublicPart {
     Frac {
         label: String,
     },
+    Slots {
+        label: String,
+        pieces: Vec<String>,
+    },
+    Surd {
+        label: String,
+    },
+    Dec {
+        label: String,
+    },
     Yesno {
         label: String,
         yes: &'static str,
@@ -184,6 +213,12 @@ pub fn public(q: &Question, seed: u32) -> PublicQuestion {
                             Kind::Num => PublicPart::Num { label },
                             Kind::Int => PublicPart::Int { label },
                             Kind::Frac => PublicPart::Frac { label },
+                            Kind::Slots { pieces, .. } => PublicPart::Slots {
+                                label,
+                                pieces: pieces.clone(),
+                            },
+                            Kind::Surd => PublicPart::Surd { label },
+                            Kind::Dec { .. } => PublicPart::Dec { label },
                             Kind::YesNo { yes, no } => PublicPart::Yesno { label, yes, no },
                             Kind::Set { options, labels } => PublicPart::Set {
                                 label,
@@ -272,6 +307,63 @@ pub fn parse_val(kind: &Kind, v: &Value) -> Val {
     match kind {
         Kind::Num => parse_int(v),
         Kind::Int => parse_signed(v),
+        Kind::Slots { pieces, .. } => match v {
+            Value::Array(a) => {
+                let n = pieces.len().saturating_sub(1);
+                let mut out = vec![];
+                for i in 0..n {
+                    match parse_signed(a.get(i).unwrap_or(&Value::Null)) {
+                        Val::Num(x) => out.push(x),
+                        Val::Blank => return Val::Blank,
+                        _ => return Val::Invalid,
+                    }
+                }
+                Val::Ints(out)
+            }
+            Value::Null => Val::Blank,
+            _ => Val::Invalid,
+        },
+        Kind::Surd => match v {
+            Value::Object(o) => {
+                let a = parse_signed(o.get("a").unwrap_or(&Value::Null));
+                let b = parse_int(o.get("b").unwrap_or(&Value::Null));
+                match (a, b) {
+                    (Val::Num(a), Val::Num(b)) if b > 0 => Val::Surd(a, b),
+                    (Val::Blank, Val::Num(b)) if b > 0 => Val::Surd(1, b),
+                    (Val::Num(a), Val::Blank) => Val::Surd(a, 1),
+                    (Val::Blank, Val::Blank) => Val::Blank,
+                    _ => Val::Invalid,
+                }
+            }
+            Value::Null => Val::Blank,
+            _ => Val::Invalid,
+        },
+        Kind::Dec { .. } => match v {
+            Value::Null => Val::Blank,
+            Value::Number(n) => n.as_f64().map(Val::Dec).unwrap_or(Val::Invalid),
+            Value::String(s) => {
+                let t: String = s
+                    .trim()
+                    .chars()
+                    .map(|c| match c {
+                        ',' => '.',
+                        '−' | '–' => '-',
+                        c => c,
+                    })
+                    .filter(|c| !c.is_whitespace())
+                    .collect();
+                if t.is_empty() {
+                    Val::Blank
+                } else {
+                    t.parse::<f64>()
+                        .ok()
+                        .filter(|x| x.is_finite())
+                        .map(Val::Dec)
+                        .unwrap_or(Val::Invalid)
+                }
+            }
+            _ => Val::Invalid,
+        },
         Kind::Frac => match v {
             Value::Object(o) => {
                 let n = parse_signed(o.get("n").unwrap_or(&Value::Null));
@@ -337,9 +429,33 @@ pub fn parse_val(kind: &Kind, v: &Value) -> Val {
     }
 }
 
+/// Kind-aware comparison: unordered slots, decimal tolerance.
+pub fn is_right_part(p: &Part, v: &Val) -> bool {
+    match (&p.kind, &p.answer, v) {
+        (
+            Kind::Slots {
+                unordered: true, ..
+            },
+            Answer::Ints(x),
+            Val::Ints(y),
+        ) => {
+            let (mut x, mut y) = (x.clone(), y.clone());
+            x.sort_unstable();
+            y.sort_unstable();
+            x == y
+        }
+        (Kind::Dec { tol }, Answer::Dec(x), Val::Dec(y)) => (x - y).abs() <= *tol + 1e-9,
+        (Kind::Dec { tol }, Answer::Dec(x), Val::Num(y)) => (x - *y as f64).abs() <= *tol + 1e-9,
+        _ => is_right(&p.answer, v),
+    }
+}
+
 pub fn is_right(a: &Answer, v: &Val) -> bool {
     match (a, v) {
         (Answer::Num(x), Val::Num(y)) => x == y,
+        (Answer::Ints(x), Val::Ints(y)) => x == y,
+        (Answer::Surd(a, b), Val::Surd(c, d)) => a == c && b == d,
+        (Answer::Dec(x), Val::Dec(y)) => (x - y).abs() <= 1e-9,
         (Answer::Frac(an, ad), Val::Frac(n, d)) => {
             let (n, d) = if *d < 0 { (-n, -d) } else { (*n, *d) };
             n == *an && d == *ad
@@ -406,7 +522,7 @@ pub fn check(q: &Question, values: &[Value], reveal: bool) -> CheckResult {
     let ok: Vec<bool> = parts
         .iter()
         .zip(&vals)
-        .map(|(p, v)| is_right(&p.answer, v))
+        .map(|(p, v)| is_right_part(p, v))
         .collect();
     let correct = ok.iter().all(|b| *b);
     let diag = if correct {
@@ -420,12 +536,23 @@ pub fn check(q: &Question, values: &[Value], reveal: bool) -> CheckResult {
             }
             _ => false,
         });
+        let unsimplified = parts.iter().zip(&vals).any(|(p, v)| match (&p.answer, v) {
+            (Answer::Surd(a, b), Val::Surd(c, d)) => {
+                crate::util::simplify_surd(*c, *d) == (*a, *b) && (c, d) != (a, b)
+            }
+            _ => false,
+        });
+        let surd_note = unsimplified.then(|| Diag {
+            tag: Some("surd-simplify"),
+            msg: Some("Η τιμή είναι σωστή, αλλά απλοποίησε τη ρίζα: βγάλε έξω από το √ ό,τι είναι τέλειο τετράγωνο (π.χ. √40 = 2√10).".into()),
+        });
         let extra = unreduced.then(|| Diag {
             tag: Some("frac-reduce"),
             msg: Some("Η τιμή είναι σωστή, αλλά γράψε το κλάσμα <b>ανάγωγο</b> (απλοποίησε όσο γίνεται, με θετικό παρονομαστή).".into()),
         });
         extra
             .into_iter()
+            .chain(surd_note)
             .chain((q.diagnose)(&vals))
             .filter(|d| d.tag.is_none_or(|t| seen.insert(t)))
             .map(|d| PubDiag {
@@ -452,6 +579,9 @@ pub fn answer_json(a: &Answer) -> Value {
     match a {
         Answer::Num(n) | Answer::Choice(n) => Value::from(*n),
         Answer::Frac(n, d) => serde_json::json!({ "n": n, "d": d }),
+        Answer::Ints(v) => Value::from(v.clone()),
+        Answer::Surd(a, b) => serde_json::json!({ "a": a, "b": b }),
+        Answer::Dec(x) => Value::from(*x),
         Answer::Bool(b) => Value::from(*b),
         Answer::Set(s) => Value::from(s.clone()),
         Answer::Pow(m) => Value::Object(
@@ -473,6 +603,18 @@ pub fn answer_text(p: &Part) -> String {
             .unwrap_or_default(),
         (_, Answer::Num(n)) => crate::util::signed(*n),
         (_, Answer::Frac(n, d)) => crate::util::frac_text(*n, *d),
+        (Kind::Slots { pieces, .. }, Answer::Ints(v)) => {
+            let mut s = String::new();
+            for (i, piece) in pieces.iter().enumerate() {
+                s += &crate::util::strip_tags(piece);
+                if let Some(x) = v.get(i) {
+                    s += &crate::util::signed(*x);
+                }
+            }
+            s
+        }
+        (_, Answer::Surd(a, b)) => crate::util::surd_text(*a, *b),
+        (_, Answer::Dec(x)) => crate::util::dec_text(*x),
         (Kind::Set { labels, options }, Answer::Set(s)) if !labels.is_empty() => s
             .iter()
             .filter_map(|x| {

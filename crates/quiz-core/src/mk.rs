@@ -154,3 +154,44 @@ pub fn sign_select(label: impl Into<String>, ans: std::cmp::Ordering) -> Part {
         v,
     )
 }
+
+/// Integers between text pieces, e.g. slots(&["", "x² + ", "x + ", ""], vec![1, 6, 9], false).
+pub fn slots(pieces: &[&str], ans: Vec<i64>, unordered: bool) -> Part {
+    Part {
+        label: String::new(),
+        kind: Kind::Slots {
+            pieces: pieces.iter().map(|s| s.to_string()).collect(),
+            unordered,
+        },
+        answer: Answer::Ints(ans),
+    }
+}
+/// a√b answer (simplified automatically).
+pub fn surd(label: impl Into<String>, a: i64, b: i64) -> Part {
+    let (a, b) = crate::util::simplify_surd(a, b);
+    Part {
+        label: label.into(),
+        kind: Kind::Surd,
+        answer: Answer::Surd(a, b),
+    }
+}
+/// Decimal answer within a tolerance.
+pub fn dec(label: impl Into<String>, x: f64, tol: f64) -> Part {
+    Part {
+        label: label.into(),
+        kind: Kind::Dec { tol },
+        answer: Answer::Dec(x),
+    }
+}
+/// Multiple choice from plain-text options; the first one is correct. Returns the part.
+pub fn choice(r: &mut crate::util::Rng, label: impl Into<String>, opts: &[String]) -> Part {
+    let idx: Vec<usize> = (0..opts.len()).collect();
+    let order = r.shuffle(&idx);
+    let options: Vec<(i64, String)> = order
+        .iter()
+        .enumerate()
+        .map(|(i, j)| (i as i64, opts[*j].clone()))
+        .collect();
+    let ans = order.iter().position(|j| *j == 0).unwrap() as i64;
+    select(label, options, ans)
+}

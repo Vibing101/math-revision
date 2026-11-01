@@ -339,6 +339,54 @@ pub fn frac_text(n: i64, d: i64) -> String {
     }
 }
 
+/// a√b with the largest square taken out of the root.
+pub fn simplify_surd(a: i64, b: i64) -> (i64, i64) {
+    let (mut a, mut b) = (a, b);
+    let mut k = 2;
+    while k * k <= b {
+        while b % (k * k) == 0 {
+            b /= k * k;
+            a *= k;
+        }
+        k += 1;
+    }
+    (a, b)
+}
+
+/// "2√10", "5", "−√3"
+pub fn surd_text(a: i64, b: i64) -> String {
+    match (a, b) {
+        (a, 1) => signed(a),
+        (1, b) => format!("√{b}"),
+        (-1, b) => format!("−√{b}"),
+        (a, b) => format!("{}√{b}", signed(a)),
+    }
+}
+
+/// Decimal with a comma, trailing zeros removed: 3,5
+pub fn dec_text(x: f64) -> String {
+    let s = format!("{:.2}", x);
+    let s = s.trim_end_matches('0').trim_end_matches('.').to_string();
+    s.replace('.', ",").replacen('-', "−", 1)
+}
+
+pub fn strip_tags(s: &str) -> String {
+    let mut out = String::new();
+    let mut tag = false;
+    for c in s.chars() {
+        match c {
+            '<' => tag = true,
+            '>' => tag = false,
+            _ if !tag => out.push(c),
+            _ => {}
+        }
+    }
+    out.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
