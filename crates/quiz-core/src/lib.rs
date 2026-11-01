@@ -15,6 +15,8 @@ use serde::Serialize;
 #[derive(Serialize, Clone, Copy)]
 pub struct Category {
     pub id: &'static str,
+    /// Chapter (book unit) this category belongs to.
+    pub chapter: &'static str,
     pub title: &'static str,
     pub desc: &'static str,
     /// Book section this practises.
@@ -23,9 +25,45 @@ pub struct Category {
     pub focus: bool,
 }
 
-pub const CATEGORIES: [Category; 13] = [
+#[derive(Serialize, Clone, Copy)]
+pub struct Chapter {
+    pub id: &'static str,
+    /// Number of the unit in the book.
+    pub number: u32,
+    pub title: &'static str,
+    pub desc: &'static str,
+    /// The unit's sections, as the book lists them.
+    pub sections: &'static [&'static str],
+}
+
+/// Book units, in book order. A new unit needs an entry here and its categories below.
+pub const CHAPTERS: &[Chapter] = &[Chapter {
+    id: "diairetotita",
+    number: 1,
+    title: "Διαιρετότητα",
+    desc: "Ευκλείδεια διαίρεση, κριτήρια, πρώτοι αριθμοί, ΜΚΔ και ΕΚΠ",
+    sections: &[
+        "Ευκλείδεια Διαίρεση",
+        "Ιδιότητες Διαιρετότητας",
+        "Κριτήρια Διαιρετότητας",
+        "Πρώτοι και Σύνθετοι Αριθμοί",
+        "ΜΚΔ και ΕΚΠ",
+        "Δραστηριότητες Ενότητας και Εμπλουτισμού",
+    ],
+}];
+
+pub fn chapter_categories(chapter: &str) -> Vec<&'static str> {
+    CATEGORIES
+        .iter()
+        .filter(|c| c.chapter == chapter)
+        .map(|c| c.id)
+        .collect()
+}
+
+pub const CATEGORIES: &[Category] = &[
     Category {
         id: "eucl",
+        chapter: "diairetotita",
         title: "Ευκλείδεια διαίρεση",
         desc: "Δ = δ·π + υ, μέρες και ομάδες",
         section: "Ευκλείδεια Διαίρεση",
@@ -33,6 +71,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "div",
+        chapter: "diairetotita",
         title: "Διαιρέτες και πολλαπλάσια",
         desc: "α | β, διαιρέτες ενός αριθμού",
         section: "Ευκλείδεια Διαίρεση",
@@ -40,6 +79,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "prop",
+        chapter: "diairetotita",
         title: "Ιδιότητες διαιρετότητας",
         desc: "Άθροισμα, διαφορά, μεταβατική",
         section: "Ιδιότητες Διαιρετότητας",
@@ -47,6 +87,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "crit",
+        chapter: "diairetotita",
         title: "Κριτήρια διαιρετότητας",
         desc: "Διαιρείται; Ποιο ψηφίο λείπει;",
         section: "Κριτήρια Διαιρετότητας",
@@ -54,6 +95,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "prime",
+        chapter: "diairetotita",
         title: "Πρώτοι και σύνθετοι",
         desc: "Πρώτος ή όχι; Πρώτοι μεταξύ τους;",
         section: "Πρώτοι και Σύνθετοι Αριθμοί",
@@ -61,6 +103,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "fact",
+        chapter: "diairetotita",
         title: "Πρώτοι παράγοντες",
         desc: "Ανάλυση με τη «σκάλα»",
         section: "Ανάλυση σε γινόμενο πρώτων παραγόντων",
@@ -68,6 +111,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "pow",
+        chapter: "diairetotita",
         title: "ΜΚΔ & ΕΚΠ με δυνάμεις",
         desc: "Μικρότερος ή μεγαλύτερος εκθέτης;",
         section: "ΜΚΔ και ΕΚΠ",
@@ -75,6 +119,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "num",
+        chapter: "diairetotita",
         title: "ΜΚΔ & ΕΚΠ αριθμών",
         desc: "Από την ανάλυση στο αποτέλεσμα",
         section: "ΜΚΔ και ΕΚΠ",
@@ -82,6 +127,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "gcdp",
+        chapter: "diairetotita",
         title: "Προβλήματα ΜΚΔ",
         desc: "Ομάδες, δέματα, κομμάτια",
         section: "ΜΚΔ και ΕΚΠ",
@@ -89,6 +135,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "time",
+        chapter: "diairetotita",
         title: "Προβλήματα ΕΚΠ: ώρες & μέρες",
         desc: "Τρένα, πλοία, δορυφόροι",
         section: "ΜΚΔ και ΕΚΠ",
@@ -96,6 +143,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "years",
+        chapter: "diairetotita",
         title: "Προβλήματα ΕΚΠ: χρονιές",
         desc: "Κομήτες και επέτειοι",
         section: "ΜΚΔ και ΕΚΠ",
@@ -103,6 +151,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "chal",
+        chapter: "diairetotita",
         title: "Προκλήσεις",
         desc: "Αριθμός ανάμεσα σε δύο όρια",
         section: "Δραστηριότητες Ενότητας",
@@ -110,6 +159,7 @@ pub const CATEGORIES: [Category; 13] = [
     },
     Category {
         id: "enrich",
+        chapter: "diairetotita",
         title: "Εμπλουτισμός: κριτήρια 7, 11, 19",
         desc: "Κριτήρια πέρα από το βασικό βιβλίο",
         section: "Δραστηριότητες Εμπλουτισμού",
@@ -229,6 +279,25 @@ mod tests {
 
     fn correct_values(q: &Question) -> Vec<Value> {
         q.parts().map(|p| answer_json(&p.answer)).collect()
+    }
+
+    #[test]
+    fn chapters_and_categories_match() {
+        for c in CATEGORIES {
+            assert!(
+                CHAPTERS.iter().any(|ch| ch.id == c.chapter),
+                "{}: unknown chapter",
+                c.id
+            );
+            assert!(generate(c.id, 1).is_some(), "{}: no generator", c.id);
+        }
+        for ch in CHAPTERS {
+            assert!(
+                !chapter_categories(ch.id).is_empty(),
+                "{}: empty chapter",
+                ch.id
+            );
+        }
     }
 
     #[test]

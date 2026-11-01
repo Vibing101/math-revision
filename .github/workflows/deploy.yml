@@ -58,6 +58,6 @@ jobs:
       - name: Smoke test
         run: |
           sleep 10
-          curl -fsS https://maths.savvy-des.com/ | grep -q "Πρόκληση Διαιρετότητας"
+          curl -fsS https://maths.savvy-des.com/ | grep -q "Επανάληψη Μαθηματικών"
           curl -fsS "https://maths.savvy-des.com/api/question?cat=pow&seed=1" | grep -q '"cat":"pow"'
           test "$(curl -s -o /dev/null -w '%{http_code}' https://maths.savvy-des.com/api/teacher/resources)" = "401"

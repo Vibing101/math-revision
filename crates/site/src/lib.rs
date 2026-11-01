@@ -16,7 +16,9 @@
 //! The teacher PIN lives in the `TEACHER_PIN` secret, never in the page.
 
 use hmac::{Hmac, Mac};
-use quiz_core::{answer_text, check, generate, public, CATEGORIES, TAGS};
+use quiz_core::{
+    answer_text, chapter_categories, check, generate, public, CATEGORIES, CHAPTERS, TAGS,
+};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::Sha256;
@@ -154,7 +156,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     Router::new()
         .get("/api/categories", |_, _| {
             let tags: serde_json::Map<String, Value> = TAGS.iter().map(|(k, v)| (k.to_string(), Value::from(*v))).collect();
-            json_res(&json!({ "categories": CATEGORIES, "tags": tags }), 200)
+            json_res(&json!({ "chapters": CHAPTERS, "categories": CATEGORIES, "tags": tags }), 200)
         })
         .get("/api/question", |req, _| {
             let q = query(&req)?;
@@ -214,10 +216,18 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             let q = query(&req)?;
             let n: u32 = q.get("n").and_then(|x| x.parse().ok()).unwrap_or(8).clamp(1, 30);
             let base: u32 = seed_of(&q).unwrap_or(1);
-            let cats: Vec<&str> = match q.get("cat").map(String::as_str) {
-                Some("all") | None => CATEGORIES.iter().map(|c| c.id).collect(),
-                Some(c) => vec![CATEGORIES.iter().find(|x| x.id == c).map(|x| x.id).unwrap_or("num")],
+            // `cat=<id>` for one category, `chapters=a,b` for whole chapters (year review).
+            let cats: Vec<&str> = match (q.get("cat"), q.get("chapters")) {
+                (Some(c), _) if c != "all" => match CATEGORIES.iter().find(|x| x.id == c) {
+                    Some(x) => vec![x.id],
+                    None => return bad("άγνωστη κατηγορία", 404),
+                },
+                (_, Some(list)) => list.split(',').flat_map(chapter_categories).collect(),
+                _ => CATEGORIES.iter().map(|c| c.id).collect(),
             };
+            if cats.is_empty() {
+                return bad("δεν επιλέχθηκε κεφάλαιο", 400);
+            }
             let items: Vec<Value> = (0..n)
                 .map(|i| {
                     let cat = cats[i as usize % cats.len()];

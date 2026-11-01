@@ -25,7 +25,9 @@ let S = fresh();
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s.points === 'number') S = Object.assign(fresh(), s); } catch (e) { /* private mode */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } };
 const cs = (id) => S.cats[id] || (S.cats[id] = { att: 0, ok: 0, first: 0 });
-let CATS = [], TAGS = {};
+let CATS = [], TAGS = {}, CHAPTERS = [];
+const chCats = (ch) => CATS.filter((c) => c.chapter === ch);
+const chStats = (ch) => chCats(ch).reduce((a, c) => { const s = cs(c.id); return { att: a.att + s.att, ok: a.ok + s.ok }; }, { att: 0, ok: 0 });
 
 const LEVELS = [[0, 'Μαθητευόμενος'], [100, 'Εξερευνητής διαιρετών'], [250, 'Κυνηγός πρώτων'], [450, 'Μάστορας του ΜΚΔ'], [700, 'Μάγος του ΕΚΠ'], [1000, 'Θρύλος της Διαιρετότητας']];
 function level() {
@@ -41,37 +43,97 @@ const BADGES = [
   { id: 'prime', t: 'Ανιχνευτής πρώτων (5 σωστά)', ok: () => cs('prime').ok >= 5 },
   { id: 'nh', t: '10 σωστά χωρίς βοήθεια', ok: () => S.noHint >= 10 },
   { id: 'all', t: 'Σωστό σε όλες τις κατηγορίες', ok: () => CATS.length && CATS.every((c) => cs(c.id).ok > 0) },
-  { id: 'r9', t: '9/10 σε μικτό γύρο', ok: () => S.rounds.some((r) => r >= 9) }];
+  { id: 'r9', t: '90% σε επαναληπτικό', ok: () => S.rounds.some((r) => r >= 9) }];
 function newBadges() { const got = []; for (const b of BADGES) if (!S.badges.includes(b.id) && b.ok()) { S.badges.push(b.id); got.push(b.t); } return got; }
 
-/* ---------- home ---------- */
+/* ---------- navigation: #  (chapters) · #ch-<id> · #year · #teacher ---------- */
 let Q = null, round = null, qn = 0, hintsShown = 0, tries = 0, done = false, busy = false;
+function go(hash) { round = null; if (location.hash === hash || (!location.hash && hash === '#')) route(); else location.hash = hash; }
+function route() {
+  round = null;
+  const h = location.hash;
+  if (h === '#year') return renderYear();
+  if (h === '#teacher') return renderTeacher();
+  if (h.startsWith('#ch-') && CHAPTERS.some((c) => '#ch-' + c.id === h)) return renderChapter(h.slice(4));
+  renderHome();
+}
+window.addEventListener('hashchange', route);
+const backLabel = () => (location.hash.startsWith('#ch-') ? '← Κεφάλαιο' : location.hash === '#year' ? '← Επανάληψη χρονιάς' : '← Αρχική');
+
 function statsChips() { const L = level(); return `<div class="stats"><span class="chip">⭐ <b>${S.points}</b> πόντοι</span><span class="chip">🔥 σερί <b>${S.streak}</b></span><span class="chip">Επίπεδο ${L.i + 1}: <b>${L.name}</b></span></div>`; }
+const pctBar = (st) => `<span class="bar"><i style="width:${st.att ? Math.round(st.ok / st.att * 100) : 0}%"></i></span><span class="d">${st.att ? `${st.ok}/${st.att} σωστά` : 'Δεν ξεκίνησε ακόμα'}</span>`;
+
 function renderHome() {
   const L = level();
-  app.innerHTML = `<header class="hero"><h1>Πρόκληση Διαιρετότητας</h1><p class="muted" style="margin:0">Εξάσκηση για τα Μαθηματικά Α΄ Γυμνασίου, σε όλες τις ενότητες της Διαιρετότητας. Κάθε φορά βγαίνουν καινούργιοι αριθμοί.</p></header>
-  <section class="card level">${statsChips()}<div class="bar" aria-hidden="true"><i style="width:${L.pct}%"></i></div><span class="muted" style="font-size:.88rem">${L.next ? `${L.next} πόντοι για το επόμενο επίπεδο` : 'Έφτασες στο ανώτερο επίπεδο!'}</span>
-   <div class="row"><button class="btn sun" id="go-round">Μικτός γύρος · 10 ερωτήσεις</button><button class="btn ghost" id="go-teacher">Για τον εκπαιδευτικό</button></div>
-   <span class="muted" style="font-size:.85rem">Ο μικτός γύρος δίνει περισσότερες ερωτήσεις από τις κατηγορίες όπου κάνεις λάθη.</span></section>
-  <h2>Διάλεξε κατηγορία</h2>
-  <div class="grid">${CATS.map((c) => { const s = cs(c.id), p = s.att ? Math.round(s.ok / s.att * 100) : 0; return `<button class="cat${c.focus ? ' focus' : ''}" data-cat="${c.id}">${c.focus ? '<span class="tag">Να το προσέξεις</span>' : ''}<span class="sec">${esc(c.section)}</span><span class="t">${esc(c.title)}</span><span class="d">${esc(c.desc)}</span><span class="bar"><i style="width:${p}%"></i></span><span class="d">${s.att ? `${s.ok}/${s.att} σωστά` : 'Δεν ξεκίνησε ακόμα'}</span></button>`; }).join('')}</div>
-  <section class="card"><h2 style="margin-bottom:8px">Παράσημα</h2><div class="badges">${BADGES.map((b) => `<span class="badge${S.badges.includes(b.id) ? '' : ' off'}">${S.badges.includes(b.id) ? '🏅 ' : ''}${b.t}</span>`).join('')}</div></section>`;
-  app.querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { round = null; start(b.dataset.cat); }));
-  $('#go-round').onclick = () => { round = { n: 10, i: 0, ok: 0 }; start(null); };
-  $('#go-teacher').onclick = () => renderTeacher();
+  app.innerHTML = `<header class="hero"><h1>Επανάληψη Μαθηματικών</h1><p class="muted" style="margin:0">Α΄ Γυμνασίου. Διάλεξε κεφάλαιο για το επαναληπτικό του ή κάνε επανάληψη για το τέλος της χρονιάς.</p></header>
+  <section class="card level">${statsChips()}<div class="bar" aria-hidden="true"><i style="width:${L.pct}%"></i></div><span class="muted" style="font-size:.88rem">${L.next ? `${L.next} πόντοι για το επόμενο επίπεδο` : 'Έφτασες στο ανώτερο επίπεδο!'}</span></section>
+  <h2>Κεφάλαια</h2>
+  <div class="grid">${CHAPTERS.map((ch) => `<button class="cat chap" data-ch="${ch.id}"><span class="sec">Κεφάλαιο ${ch.number}</span><span class="t">${esc(ch.title)}</span><span class="d">${esc(ch.desc)}</span>${pctBar(chStats(ch.id))}</button>`).join('')}
+   <button class="cat year" id="go-year"><span class="tag">Τέλος χρονιάς</span><span class="t">Επανάληψη χρονιάς</span><span class="d">Διάλεξε ποια κεφάλαια εξετάζονται και κάνε ένα μικτό επαναληπτικό από όλα μαζί.</span></button></div>
+  <section class="card"><h2 style="margin-bottom:8px">Παράσημα</h2><div class="badges">${BADGES.map((b) => `<span class="badge${S.badges.includes(b.id) ? '' : ' off'}">${S.badges.includes(b.id) ? '🏅 ' : ''}${b.t}</span>`).join('')}</div></section>
+  <div class="row"><button class="btn ghost" id="go-teacher">Για τον εκπαιδευτικό</button></div>`;
+  app.querySelectorAll('[data-ch]').forEach((b) => (b.onclick = () => go('#ch-' + b.dataset.ch)));
+  $('#go-year').onclick = () => go('#year');
+  $('#go-teacher').onclick = () => go('#teacher');
 }
-function weightedCat() {
+
+function renderChapter(id) {
+  const ch = CHAPTERS.find((c) => c.id === id), cats = chCats(id);
+  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Κεφάλαια</button>${statsChips()}</div>
+  <header class="hero"><span class="muted">Κεφάλαιο ${ch.number}</span><h1>${esc(ch.title)}</h1><p class="muted" style="margin:0">${ch.sections.map(esc).join(' · ')}</p></header>
+  <section class="card level"><h2>Επαναληπτικό κεφαλαίου</h2><p style="margin:0">10 ερωτήσεις από όλες τις ενότητες του κεφαλαίου, με περισσότερες από εκεί που κάνεις λάθη.</p>
+   <div class="row"><button class="btn sun" id="go-round">Ξεκίνα το επαναληπτικό</button></div></section>
+  <h2>Ή εξάσκηση ανά ενότητα</h2>
+  <div class="grid">${cats.map((c) => `<button class="cat${c.focus ? ' focus' : ''}" data-cat="${c.id}">${c.focus ? '<span class="tag">Να το προσέξεις</span>' : ''}<span class="sec">${esc(c.section)}</span><span class="t">${esc(c.title)}</span><span class="d">${esc(c.desc)}</span>${pctBar(cs(c.id))}</button>`).join('')}</div>`;
+  $('#home').onclick = () => go('#');
+  app.querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { round = null; start(b.dataset.cat); }));
+  $('#go-round').onclick = () => startRound(cats.map((c) => c.id), 10, ch.title);
+}
+
+function renderYear(msg) {
+  const sel = (S.year && S.year.chapters) || CHAPTERS.map((c) => c.id);
+  const n = (S.year && S.year.n) || 20;
+  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Κεφάλαια</button>${statsChips()}</div>
+  <header class="hero"><h1>Επανάληψη χρονιάς</h1><p class="muted" style="margin:0">Διάλεξε τα κεφάλαια που εξετάζονται στις εξετάσεις τέλους χρονιάς. Η επιλογή σου αποθηκεύεται.</p></header>
+  <form class="card" id="yf" style="display:flex;flex-direction:column;gap:12px">
+   <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px"><legend style="font-weight:700;margin-bottom:6px">Κεφάλαια</legend>
+   ${CHAPTERS.map((ch) => { const st = chStats(ch.id); return `<label class="chk"><input type="checkbox" name="ch" value="${ch.id}" id="y-${ch.id}"${sel.includes(ch.id) ? ' checked' : ''}><span><b>Κεφάλαιο ${ch.number}: ${esc(ch.title)}</b><br><span class="muted" style="font-size:.88rem">${esc(ch.desc)}${st.att ? ` · ${Math.round(st.ok / st.att * 100)}% σωστά μέχρι τώρα` : ''}</span></span></label>`; }).join('')}
+   </fieldset>
+   <div class="row"><label for="y-n" style="font-weight:700">Ερωτήσεις</label><select id="y-n">${[10, 20, 30, 40].map((x) => `<option value="${x}"${x === n ? ' selected' : ''}>${x}</option>`).join('')}</select></div>
+   <span class="err" role="alert">${msg ? esc(msg) : ''}</span>
+   <div class="row"><button class="btn sun" type="submit">Ξεκίνα την επανάληψη</button></div>
+   <span class="muted" style="font-size:.85rem">Οι ερωτήσεις μοιράζονται σε όλα τα κεφάλαια που διάλεξες, με περισσότερες από τις ενότητες όπου κάνεις λάθη. Στο τέλος βλέπεις αποτέλεσμα ανά κεφάλαιο.</span>
+  </form>`;
+  $('#home').onclick = () => go('#');
+  app.querySelectorAll('input[name=ch]').forEach((i) => i.addEventListener('change', () => { app.querySelector('#yf .err').textContent = ''; }));
+  $('#yf').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const chapters = [...app.querySelectorAll('input[name=ch]:checked')].map((i) => i.value);
+    const count = +$('#y-n').value;
+    if (!chapters.length) return renderYear('Διάλεξε τουλάχιστον ένα κεφάλαιο.');
+    S.year = { chapters, n: count }; save();
+    startRound(CATS.filter((c) => chapters.includes(c.chapter)).map((c) => c.id), count, 'Επανάληψη χρονιάς');
+  });
+}
+
+function startRound(cats, n, title) { round = { n, i: 0, ok: 0, cats, title, by: {} }; start(null); }
+function weightedCat(ids) {
   const prior = { pow: 0.3, time: 0.3, num: 0.4 };
-  const w = CATS.map((c) => { const s = cs(c.id); const acc = s.att ? s.ok / s.att : (prior[c.id] ?? 0.5); return 1 + 2 * (1 - acc); });
+  const list = CATS.filter((c) => ids.includes(c.id));
+  // Spread a multi-chapter review evenly across chapters first, then weight by weak spots.
+  const chs = [...new Set(list.map((c) => c.chapter))];
+  const ch = chs[Math.floor(Math.random() * chs.length)];
+  const pool = list.filter((c) => c.chapter === ch);
+  const w = pool.map((c) => { const s = cs(c.id); const acc = s.att ? s.ok / s.att : (prior[c.id] ?? 0.5); return 1 + 2 * (1 - acc); });
   let x = Math.random() * w.reduce((a, b) => a + b, 0);
-  for (let i = 0; i < w.length; i++) { x -= w[i]; if (x <= 0) return CATS[i].id; }
-  return CATS[CATS.length - 1].id;
+  for (let i = 0; i < w.length; i++) { x -= w[i]; if (x <= 0) return pool[i].id; }
+  return pool[pool.length - 1].id;
 }
 
 /* ---------- question ---------- */
 async function start(cat) {
-  const c = cat || weightedCat();
-  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Αρχική</button>${statsChips()}</div><section class="card"><p class="loading">Φόρτωση ερώτησης…</p></section>`;
+  const c = cat || weightedCat(round.cats);
+  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">${backLabel()}</button>${statsChips()}</div><section class="card"><p class="loading">Φόρτωση ερώτησης…</p></section>`;
   $('#home').onclick = goHome;
   try {
     Q = await api(`/api/question?cat=${encodeURIComponent(c)}&seed=${newSeed()}`);
@@ -83,7 +145,7 @@ async function start(cat) {
   Q.fixed = cat; qn++; hintsShown = 0; tries = 0; done = false; busy = false;
   renderQ();
 }
-function goHome() { round = null; renderHome(); }
+function goHome() { round = null; route(); }
 function partHTML(p, id) {
   const lab = p.label ? `<label for="${id}">${esc(p.label)}</label>` : '';
   switch (p.type) {
@@ -99,8 +161,9 @@ const parts = () => Q.groups.flatMap((g) => g.parts);
 function renderQ() {
   const cat = CATS.find((c) => c.id === Q.cat);
   let pi = 0;
-  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Αρχική</button>${statsChips()}</div>
-  <section class="card"><div class="row" style="justify-content:space-between"><span class="tag">${esc(cat ? cat.title : '')}</span><span class="muted" style="font-size:.88rem">${round ? `Ερώτηση ${round.i + 1} από ${round.n}` : ''}</span></div>
+  const chap = cat && CHAPTERS.find((c) => c.id === cat.chapter);
+  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">${backLabel()}</button>${statsChips()}</div>
+  <section class="card"><div class="row" style="justify-content:space-between"><span class="tag">${round && chap && CHAPTERS.length > 1 ? esc(chap.title) + ' · ' : ''}${esc(cat ? cat.title : '')}</span><span class="muted" style="font-size:.88rem">${round ? `${esc(round.title)} · ερώτηση ${round.i + 1} από ${round.n}` : ''}</span></div>
   <div class="qtext" style="margin-top:10px">${Q.prompt}</div>
   ${Q.groups.map((g) => `<div class="group">${g.label ? `<div class="gl">${g.label}</div>` : ''}${g.parts.map((p) => { const id = `p${qn}_${pi++}`; p.id = id; return `<div class="part" id="${id}-w">${partHTML(p, id)}</div>`; }).join('')}</div>`).join('')}
   <div class="row" style="margin-top:16px"><button class="btn" id="check">Έλεγχος</button><button class="btn ghost" id="hint">💡 Βοήθεια (0/4)</button><button class="btn sun" id="next" hidden>${round && round.i + 1 >= round.n ? 'Τέλος γύρου' : 'Επόμενη ➜'}</button></div>
@@ -157,7 +220,7 @@ async function check() {
     S.streak++; S.best = Math.max(S.best, S.streak); if (!hintsShown && tries === 1) S.noHint++;
     const pts = tries === 1 ? Math.max(4, 10 - 2 * hintsShown) : Math.max(2, 5 - hintsShown);
     const bonus = S.streak % 3 === 0 ? 5 : 0;
-    S.points += pts + bonus; if (round) round.ok++;
+    S.points += pts + bonus; if (round) round.ok++; roundRecord(true);
     const nb = newBadges(); save();
     fb.innerHTML = `<div class="fb ok"><span class="h">${pick(['Σωστό!', 'Μπράβο!', 'Τέλεια!', 'Εξαιρετικά!'])} +${pts} πόντοι${bonus ? ` · μπόνους σερί +${bonus}` : ''}</span>${nb.map((b) => `<span>🏅 Νέο παράσημο: <b>${b}</b></span>`).join('')}<div class="sol">${r.solution}</div></div>`;
     celebrate(pts + bonus); finishUI();
@@ -169,7 +232,7 @@ async function check() {
       save();
       fb.innerHTML = `<div class="fb bad"><span class="h">Όχι ακόμα${ps.length > 1 ? ` · ${nOk} από ${ps.length} σωστά` : ''}.</span>${msgs || '<span>Έλεγξε ξανά τις πράξεις σου. Μπορείς να πατήσεις «Βοήθεια».</span>'}<span>Διόρθωσε τα κόκκινα και πάτα ξανά «Έλεγχος».</span></div>`;
     } else {
-      done = true; c.att++; S.streak = 0; save();
+      done = true; c.att++; S.streak = 0; roundRecord(false); save();
       fb.innerHTML = `<div class="fb bad"><span class="h">Δες τη λύση και συνέχισε. Την επόμενη φορά θα το βρεις!</span>${msgs}<div class="sol">${r.solution}</div></div>`;
       finishUI();
     }
@@ -184,12 +247,21 @@ function celebrate(p) {
   const cols = ['var(--sun)', 'var(--accent)', 'var(--ok)', 'var(--bad)'];
   for (let i = 0; i < 18; i++) { const s = document.createElement('div'); s.className = 'spark'; s.style.left = x + 'px'; s.style.top = y + 'px'; s.style.background = cols[i % 4]; s.style.setProperty('--dx', rand(-120, 120) + 'px'); s.style.setProperty('--dy', rand(-110, 40) + 'px'); document.body.appendChild(s); setTimeout(() => s.remove(), 900); }
 }
+function roundRecord(ok) {
+  if (!round) return;
+  const ch = (CATS.find((c) => c.id === Q.cat) || {}).chapter || '';
+  const b = round.by[ch] || (round.by[ch] = { ok: 0, n: 0 });
+  b.n++; if (ok) b.ok++;
+}
 function endRound() {
-  S.rounds.push(round.ok); const nb = newBadges(); save(); const r = round; round = null;
-  const msg = r.ok >= 9 ? 'Είσαι έτοιμος για το διαγώνισμα!' : r.ok >= 7 ? 'Πολύ καλά! Λίγη εξάσκηση ακόμα στα δύσκολα.' : r.ok >= 5 ? 'Καλή προσπάθεια. Ξαναδοκίμασε έναν γύρο.' : 'Ας κάνουμε εξάσκηση κατηγορία-κατηγορία, με τη βοήθεια.';
-  app.innerHTML = `<section class="card" style="text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center"><h1>Τέλος γύρου</h1><div class="big" style="font-size:2.6rem">${r.ok} / ${r.n}</div><p style="margin:0">${msg}</p>${nb.map((b) => `<span>🏅 Νέο παράσημο: <b>${b}</b></span>`).join('')}${statsChips()}
-  <div class="row" style="justify-content:center"><button class="btn sun" id="again">Νέος γύρος</button><button class="btn ghost" id="home">Αρχική</button></div></section>`;
-  $('#again').onclick = () => { round = { n: 10, i: 0, ok: 0 }; start(null); }; $('#home').onclick = renderHome;
+  S.rounds.push(Math.round(round.ok / round.n * 10)); const nb = newBadges(); save(); const r = round; round = null;
+  const pct = r.ok / r.n;
+  const msg = pct >= 0.9 ? 'Είσαι έτοιμος για το διαγώνισμα!' : pct >= 0.7 ? 'Πολύ καλά! Λίγη εξάσκηση ακόμα στα δύσκολα.' : pct >= 0.5 ? 'Καλή προσπάθεια. Ξαναδοκίμασε έναν γύρο.' : 'Ας κάνουμε εξάσκηση ενότητα-ενότητα, με τη βοήθεια.';
+  const rows = Object.entries(r.by).map(([id, b]) => { const ch = CHAPTERS.find((c) => c.id === id); return `<tr><td>${esc(ch ? ch.title : id)}</td><td>${b.ok} / ${b.n}</td></tr>`; }).join('');
+  app.innerHTML = `<section class="card" style="text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center"><span class="muted">${esc(r.title)}</span><h1>Τέλος επαναληπτικού</h1><div class="big" style="font-size:2.6rem">${r.ok} / ${r.n}</div><p style="margin:0">${msg}</p>${nb.map((b) => `<span>🏅 Νέο παράσημο: <b>${b}</b></span>`).join('')}
+  ${Object.keys(r.by).length > 1 ? `<div class="tbl" style="width:100%;max-width:420px"><table class="st"><tr><th>Κεφάλαιο</th><th>Σωστά</th></tr>${rows}</table></div>` : ''}${statsChips()}
+  <div class="row" style="justify-content:center"><button class="btn sun" id="again">Νέο επαναληπτικό</button><button class="btn ghost" id="home">Πίσω</button></div></section>`;
+  $('#again').onclick = () => startRound(r.cats, r.n, r.title); $('#home').onclick = route;
 }
 
 /* ---------- teacher area (PIN checked by the server) ---------- */
@@ -210,7 +282,7 @@ function renderPin(err) {
   <input id="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="one-time-code" aria-describedby="pinerr">
   <span class="err" id="pinerr" role="alert">${err ? esc(err) : ''}</span>
   <button class="btn" id="pinbtn" type="submit">Είσοδος</button></form></section>`;
-  $('#home').onclick = goHome;
+  $('#home').onclick = () => go('#');
   const inp = $('#pin'); inp.focus();
   $('#pinf').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -229,28 +301,28 @@ function renderTeacherPanel() {
   const tags = Object.entries(S.tags).sort((a, b) => b[1] - a[1]);
   app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Αρχική</button><button class="btn ghost" id="logout">Αποσύνδεση</button></div><h1>Για τον εκπαιδευτικό</h1>
   <div class="tools">
-   <section class="card"><h2>Επαναληπτικό διαγώνισμα</h2><p class="muted" style="margin:0">Το έντυπο διαγώνισμα (15 ασκήσεις) και οι λύσεις του, έτοιμα για εκτύπωση.</p>
+   <section class="card"><h2>Επαναληπτικό διαγώνισμα</h2><p class="muted" style="margin:0">Κεφάλαιο «Διαιρετότητα»: το έντυπο διαγώνισμα (15 ασκήσεις) και οι λύσεις του, έτοιμα για εκτύπωση.</p>
     <div class="row"><button class="btn" id="open-exam">Διαγώνισμα</button><button class="btn ghost" id="open-sol">Λύσεις</button></div></section>
    <section class="card"><h2>Φύλλο εργασίας</h2><p class="muted" style="margin:0">Καινούργιες ασκήσεις με απαντήσεις στο τέλος.</p>
-    <label for="ws-cat">Ενότητα</label><select id="ws-cat"><option value="all">Όλες οι ενότητες</option>${CATS.map((c) => `<option value="${c.id}">${esc(c.title)}</option>`).join('')}</select>
+    <label for="ws-cat">Ενότητα</label><select id="ws-cat"><optgroup label="Ολόκληρα κεφάλαια"><option value="chapters=${CHAPTERS.map((c) => c.id).join(',')}">Όλα τα κεφάλαια (επανάληψη χρονιάς)</option>${CHAPTERS.map((ch) => `<option value="chapters=${ch.id}">Κεφάλαιο ${ch.number}: ${esc(ch.title)}</option>`).join('')}</optgroup>${CHAPTERS.map((ch) => `<optgroup label="${esc(ch.title)}">${chCats(ch.id).map((c) => `<option value="cat=${c.id}">${esc(c.title)}</option>`).join('')}</optgroup>`).join('')}</select>
     <label for="ws-n">Αριθμός ασκήσεων</label><select id="ws-n">${[6, 8, 10, 13, 15, 20].map((n) => `<option${n === 10 ? ' selected' : ''}>${n}</option>`).join('')}</select>
     <button class="btn" id="ws-go">Δημιουργία φύλλου</button></section>
   </div>
   <div id="tmsg"></div>
   <p class="muted" style="margin:0">Η πρόοδος του μαθητή αποθηκεύεται μόνο σε αυτή τη συσκευή και σε αυτόν τον browser.</p>
   <section class="card"><h2 style="margin-bottom:8px">Πρόοδος ανά κατηγορία</h2><div class="tbl"><table class="st"><tr><th>Κατηγορία</th><th>Ερωτήσεις</th><th>Σωστά</th><th>Με την 1η</th><th>Ποσοστό</th></tr>
-  ${CATS.map((c) => { const s = cs(c.id); return `<tr><td>${esc(c.title)}</td><td>${s.att}</td><td>${s.ok}</td><td>${s.first}</td><td>${s.att ? Math.round(s.ok / s.att * 100) + '%' : '–'}</td></tr>`; }).join('')}</table></div></section>
+  ${CHAPTERS.map((ch) => { const t = chStats(ch.id); return `<tr><th colspan="4">Κεφάλαιο ${ch.number}: ${esc(ch.title)}</th><th>${t.att ? Math.round(t.ok / t.att * 100) + '%' : '–'}</th></tr>` + chCats(ch.id).map((c) => { const s = cs(c.id); return `<tr><td>${esc(c.title)}</td><td>${s.att}</td><td>${s.ok}</td><td>${s.first}</td><td>${s.att ? Math.round(s.ok / s.att * 100) + '%' : '–'}</td></tr>`; }).join(''); }).join('')}</table></div></section>
   <section class="card"><h2 style="margin-bottom:8px">Συχνά λάθη</h2>${tags.length ? `<div class="tbl"><table class="st"><tr><th>Λάθος</th><th>Φορές</th></tr>${tags.map(([t, n]) => `<tr><td>${esc(TAGS[t] || t)}</td><td>${n}</td></tr>`).join('')}</table></div>` : '<p class="muted" style="margin:0">Δεν έχουν καταγραφεί λάθη ακόμα.</p>'}</section>
-  <section class="card"><h2 style="margin-bottom:8px">Σύνολο</h2><p style="margin:0">Πόντοι: ${S.points} · Καλύτερο σερί: ${S.best} · Μικτοί γύροι: ${S.rounds.length ? S.rounds.join(', ') + ' (από 10)' : 'κανένας'}</p>
+  <section class="card"><h2 style="margin-bottom:8px">Σύνολο</h2><p style="margin:0">Πόντοι: ${S.points} · Καλύτερο σερί: ${S.best} · Επαναληπτικά: ${S.rounds.length ? S.rounds.join(', ') + ' (βαθμός στα 10)' : 'κανένα'}</p>
   <div style="margin-top:10px">${confirmReset ? '<div class="confirm"><span>Να σβηστεί όλη η πρόοδος;</span><button class="btn" id="yes" style="background:var(--bad)">Ναι, σβήσ\' την</button><button class="btn ghost" id="no">Άκυρο</button></div>' : '<button class="btn ghost" id="reset">Μηδενισμός προόδου</button>'}</div></section>`;
-  $('#home').onclick = () => { confirmReset = false; goHome(); };
-  $('#logout').onclick = () => { memToken = null; setToken(null); goHome(); };
+  $('#home').onclick = () => { confirmReset = false; go('#'); };
+  $('#logout').onclick = () => { memToken = null; setToken(null); go('#'); };
   const r = $('#reset'); if (r) r.onclick = () => { confirmReset = true; renderTeacherPanel(); };
   const y = $('#yes'); if (y) y.onclick = () => { S = fresh(); save(); confirmReset = false; renderTeacherPanel(); };
   const n = $('#no'); if (n) n.onclick = () => { confirmReset = false; renderTeacherPanel(); };
   $('#open-exam').onclick = () => openDoc(async () => (await authed('/api/teacher/resources')).exam);
   $('#open-sol').onclick = () => openDoc(async () => (await authed('/api/teacher/resources')).solutions);
-  $('#ws-go').onclick = () => openDoc(async () => worksheetHTML(await authed(`/api/teacher/worksheet?cat=${$('#ws-cat').value}&n=${$('#ws-n').value}&seed=${newSeed()}`)));
+  $('#ws-go').onclick = () => openDoc(async () => worksheetHTML(await authed(`/api/teacher/worksheet?${$('#ws-cat').value}&n=${$('#ws-n').value}&seed=${newSeed()}`)));
 }
 async function openDoc(load) {
   const w = window.open('', '_blank');
@@ -282,8 +354,8 @@ function worksheetHTML(ws) {
 (async function boot() {
   try {
     const r = await api('/api/categories');
-    CATS = r.categories; TAGS = r.tags;
-    renderHome();
+    CATS = r.categories; TAGS = r.tags; CHAPTERS = r.chapters;
+    route();
   } catch (e) {
     app.innerHTML = netError(e) + '<div class="row" style="margin-top:12px"><button class="btn" onclick="location.reload()">Δοκίμασε ξανά</button></div>';
   }
