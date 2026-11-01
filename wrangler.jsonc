@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "maths-savvy-des",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./public" },
+  "workers_dev": false,
+  "routes": [{ "pattern": "maths.savvy-des.com", "custom_domain": true }]
+}
