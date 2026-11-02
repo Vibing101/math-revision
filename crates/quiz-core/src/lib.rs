@@ -14,6 +14,7 @@ pub mod gen_numbers;
 pub mod gen_ratio;
 pub mod gen_rational;
 pub mod gen_sets;
+pub mod lesson;
 pub mod mk;
 pub mod model;
 pub mod util;

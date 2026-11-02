@@ -913,6 +913,15 @@ fn eq_param(r: &mut Rng) -> Question {
 
 // ---------- composite factorizations and method names (from the school tests) ----------
 
+/// A coefficient in front of a letter: 1 is not written.
+fn coef(n: i64) -> String {
+    if n == 1 {
+        String::new()
+    } else {
+        n.to_string()
+    }
+}
+
 pub fn c_factor2(r: &mut Rng) -> Question {
     let methods = [
         "Κοινός παράγοντας",
@@ -992,7 +1001,7 @@ pub fn c_factor2(r: &mut Rng) -> Question {
                 }
             };
             (
-                format!("{}x³ − {} + {d}x − {}", if k == 1 { String::new() } else { k.to_string() }, k * c.pow(3), d * c),
+                format!("{}x³ − {} + {}x − {}", if k == 1 { String::new() } else { k.to_string() }, k * c.pow(3), coef(d), d * c),
                 format!("(x − {c})({}x² + {}x + {})", if k == 1 { String::new() } else { k.to_string() }, k * c, k * c * c + d),
                 vec![format!("(x − {c})({}x² + {}x + {})", if k == 1 { String::new() } else { k.to_string() }, k * c, k * c * c), format!("(x + {c})({}x² − {}x + {})", if k == 1 { String::new() } else { k.to_string() }, k * c, k * c * c + d), format!("(x − {c})²({}x + {d})", if k == 1 { String::new() } else { k.to_string() })],
                 format!("Ομαδοποίηση: {k}(x³ − {}) + {d}(x − {c}) = {k}(x − {c})(x² + {c}x + {}) + {d}(x − {c}) = (x − {c})[{k}(x² + {c}x + {}) + {d}]", c.pow(3), c * c, c * c),
@@ -1018,8 +1027,8 @@ pub fn c_factor2(r: &mut Rng) -> Question {
             (
                 format!("x²(x − {a}){bterm}{cterm}"),
                 format!("(x − {a}){}{}", lin(1, m, "x"), lin(1, n, "x")).replace("<i>", "").replace("</i>", ""),
-                vec![format!("(x − {a}){}{}", lin(1, -m, "x"), lin(1, -n, "x")).replace("<i>", "").replace("</i>", ""), format!("(x − {a})(x² {} {}x {} {})", if bb < 0 { "−" } else { "+" }, bb.abs(), if cc < 0 { "−" } else { "+" }, cc.abs()), format!("(x − {a})²{}", lin(1, m + n, "x")).replace("<i>", "").replace("</i>", "")],
-                format!("Ο όρος με ({a} − x) γίνεται −(x − {a}). Κοινός παράγοντας (x − {a}): (x − {a})(x² {} {}x {} {}) και μετά τριώνυμο.", if bb < 0 { "−" } else { "+" }, bb.abs(), if cc < 0 { "+" } else { "−" }, cc.abs()),
+                vec![format!("(x − {a}){}{}", lin(1, -m, "x"), lin(1, -n, "x")).replace("<i>", "").replace("</i>", ""), format!("(x − {a})(x² {} {}x {} {})", if bb < 0 { "−" } else { "+" }, coef(bb.abs()), if cc < 0 { "−" } else { "+" }, cc.abs()), format!("(x − {a})²{}", lin(1, m + n, "x")).replace("<i>", "").replace("</i>", "")],
+                format!("Ο όρος με ({a} − x) γίνεται −(x − {a}). Κοινός παράγοντας (x − {a}): (x − {a})(x² {} {}x {} {}) και μετά τριώνυμο.", if bb < 0 { "−" } else { "+" }, coef(bb.abs()), if cc < 0 { "+" } else { "−" }, cc.abs()),
             )
         }
         3 => {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Επανάληψη Μαθηματικών Α΄ Γυμνασίου ανά κεφάλαιο και για το τέλος της χρονιάς.">
+<meta name="description" content="Επανάληψη Μαθηματικών Γυμνασίου ανά κεφάλαιο και για το τέλος της χρονιάς.">
 <title>Επανάληψη Μαθηματικών</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%E2%9E%97%3C/text%3E%3C/svg%3E">
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -137,6 +137,37 @@ input.slot{width:4.2em;text-align:center}
 .fracin{display:inline-flex;flex-direction:column;gap:3px;align-items:center}
 .fracin input{width:5.5em;text-align:center}
 .fracin input:first-child{border-bottom:3px solid var(--fg)}
+.btn.sm{padding:6px 12px;font-size:.92rem}
+.lvbtns{margin-top:10px}
+dialog.lv{width:min(680px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;border:1px solid var(--line);border-radius:16px;padding:16px;background:var(--card);color:var(--fg)}
+dialog.lv::backdrop{background:rgba(5,12,18,.6)}
+.lv-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.lv-x{border:0;background:var(--chip);color:var(--fg);border-radius:999px;width:40px;height:40px;font-size:1.1rem;flex:none}
+.lv-prog{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.lv-dots{display:flex;flex-wrap:wrap;gap:6px}
+.lv-dot{width:34px;height:34px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--fg);font-weight:700;font-size:.9rem;padding:0}
+.lv-dot.done{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.lv-dot.cur{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.lv-count{font-size:.9rem;font-variant-numeric:tabular-nums}
+.lv-bar{margin-top:8px;height:6px}
+.lv-st{margin-top:14px;font-size:1.15rem}
+.lv-stage{margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:18px 16px;min-height:130px;font-size:1.25rem;line-height:1.7;text-align:center;display:flex;flex-direction:column;justify-content:center;overflow-x:auto}
+.lv-stage .lp{font-size:1rem;text-align:left}
+.lv-stage .lp .big{font-size:1.35rem}
+.lv-stage ol{text-align:left;margin:0;padding-left:1.4em;font-size:1.05rem}
+.lv-stage .ladders{justify-content:center;font-size:1rem}
+.lv-stage mark{background:var(--sun-soft);color:inherit;border-bottom:3px solid var(--sun);border-radius:4px;padding:0 .15em}
+.lv-stage.in{animation:lvin .45s ease-out}
+@keyframes lvin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.lv-cap{margin:12px 0 0;font-size:1.02rem;line-height:1.6;color:var(--muted)}
+.lv-cap .cur{color:var(--fg);background:var(--sun-soft);border-radius:4px;box-decoration-break:clone;-webkit-box-decoration-break:clone;padding:0 .15em}
+.lv-note{margin:10px 0 0;font-size:.9rem;background:var(--sun-soft);border-radius:8px;padding:8px 12px}
+.lv-ctrl{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.lv-ctrl .btn{flex:1 1 auto;min-height:44px}
+.lv-opt{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:12px;font-size:.95rem}
+.lv-auto{display:flex;align-items:center;gap:8px}
+.lv-auto input{width:20px;height:20px;accent-color:var(--accent)}
+@media (prefers-reduced-motion:reduce){.lv-stage.in{animation:none}}
 </style>
 </head>
 <body>

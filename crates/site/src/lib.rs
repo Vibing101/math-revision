@@ -9,6 +9,7 @@
 //! | GET  /api/question?cat&seed    | a question without its answers                    |
 //! | GET  /api/hint?cat&seed&n      | hint n (0–3)                                      |
 //! | POST /api/check                | checks answers, returns feedback / solution       |
+//! | GET  /api/lesson?cat&seed&kind | narrated step lesson: kind=instr or kind=method   |
 //! | POST /api/teacher/login        | PIN → signed session token                        |
 //! | GET  /api/teacher/resources    | printable test and its solutions (token required) |
 //! | GET  /api/teacher/worksheet    | worksheet with answer key (token required)        |
@@ -187,7 +188,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     Router::new()
         .get("/api/categories", |_, _| {
             let tags: serde_json::Map<String, Value> = TAGS.iter().map(|(k, v)| (k.to_string(), Value::from(*v))).collect();
-            json_res(&json!({ "chapters": CHAPTERS, "categories": CATEGORIES, "tags": tags }), 200)
+            json_res(&json!({ "chapters": CHAPTERS, "categories": CATEGORIES, "tags": tags, "method_cats": quiz_core::lesson::METHOD_CATS }), 200)
         })
         .get("/api/question", |req, _| {
             let q = query(&req)?;
@@ -204,6 +205,19 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             match generate(cat, seed) {
                 Some(question) => json_res(&json!({ "n": n, "hint": question.hints[n] }), 200),
                 None => bad("άγνωστη κατηγορία", 404),
+            }
+        })
+        .get("/api/lesson", |req, _| {
+            let q = query(&req)?;
+            let (Some(cat), Some(seed)) = (q.get("cat"), seed_of(&q)) else { return bad("cat και seed απαιτούνται", 400) };
+            let Some(question) = generate(cat, seed) else { return bad("άγνωστη κατηγορία", 404) };
+            let lesson = match q.get("kind").map(String::as_str) {
+                Some("method") => quiz_core::lesson::method(&question),
+                _ => Some(quiz_core::lesson::instructions(&question)),
+            };
+            match lesson {
+                Some(l) => json_res(&serde_json::to_value(l)?, 200),
+                None => bad("δεν υπάρχει βίντεο μεθόδου για αυτή την άσκηση", 404),
             }
         })
         .post_async("/api/check", |mut req, _| async move {

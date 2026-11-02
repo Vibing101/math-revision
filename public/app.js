@@ -25,7 +25,7 @@ let S = fresh();
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s.points === 'number') S = Object.assign(fresh(), s); } catch (e) { /* private mode */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } };
 const cs = (id) => S.cats[id] || (S.cats[id] = { att: 0, ok: 0, first: 0 });
-let CATS = [], TAGS = {}, CHAPTERS = [];
+let CATS = [], TAGS = {}, CHAPTERS = [], METHOD_CATS = [];
 const chCats = (ch) => CATS.filter((c) => c.chapter === ch);
 const GRADES = [{ id: 'a', name: 'Α΄ Γυμνασίου' }, { id: 'g', name: 'Γ΄ Γυμνασίου' }];
 const gradeName = () => (GRADES.find((g) => g.id === S.grade) || GRADES[0]).name;
@@ -185,6 +185,7 @@ function renderQ() {
   app.innerHTML = `<div class="top"><button class="btn ghost" id="home">${backLabel()}</button>${statsChips()}</div>
   <section class="card"><div class="row" style="justify-content:space-between"><span class="tag">${round && chap && CHAPTERS.length > 1 ? esc(chap.title) + ' · ' : ''}${esc(cat ? cat.title : '')}</span><span class="muted" style="font-size:.88rem">${round ? `${esc(round.title)} · ερώτηση ${round.i + 1} από ${round.n}` : ''}</span></div>
   <div class="qtext" style="margin-top:10px">${Q.prompt}</div>
+  <div class="row lvbtns"><button class="btn ghost sm" data-lesson="instr">▶ Βίντεο: Οδηγίες</button>${METHOD_CATS.includes(Q.cat) ? '<button class="btn ghost sm" data-lesson="method">▶ Βίντεο: Μέθοδος</button>' : ''}</div>
   ${Q.groups.map((g) => `<div class="group">${g.label ? `<div class="gl">${g.label}</div>` : ''}${g.parts.map((p) => { const id = `p${qn}_${pi++}`; p.id = id; return `<div class="part" id="${id}-w">${partHTML(p, id)}</div>`; }).join('')}</div>`).join('')}
   <div class="row" style="margin-top:16px"><button class="btn" id="check">Έλεγχος</button><button class="btn ghost" id="hint">💡 Βοήθεια (0/4)</button><button class="btn sun" id="next" hidden>${round && round.i + 1 >= round.n ? 'Τέλος γύρου' : 'Επόμενη ➜'}</button></div>
   <div class="hints" id="hints" style="margin-top:12px"></div><div id="fb" style="margin-top:12px"></div></section>`;
@@ -193,6 +194,7 @@ function renderQ() {
   app.querySelectorAll('[data-st]').forEach((b) => (b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true')));
   app.querySelectorAll('[data-pm]').forEach((b) => (b.onclick = () => { const i = $('#' + b.dataset.pm); const v = i.value.trim(); i.value = /^[-−]/.test(v) ? v.replace(/^[-−]\s*/, '') : '−' + v; i.focus(); }));
   $('#hint').onclick = showHint; $('#check').onclick = check;
+  app.querySelectorAll('[data-lesson]').forEach((b) => (b.onclick = () => openLesson(b.dataset.lesson, b)));
   $('#next').onclick = () => { if (round) { round.i++; if (round.i >= round.n) return endRound(); } start(round ? null : Q.fixed); };
   app.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done ? $('#next').click() : check(); } }));
   const f = app.querySelector('input,select'); if (f && matchMedia('(pointer:fine)').matches) f.focus();
@@ -385,11 +387,152 @@ function worksheetHTML(ws) {
   <h1>${title}</h1><p>Όνομα: ……………………………… &nbsp; Ημερομηνία: ……………</p>${qs}<div class="key"><h1>Απαντήσεις</h1>${key}</div></body></html>`;
 }
 
+/* ---------- narrated step "videos" (instructions / method) ----------
+   Each lesson is a list of steps {title, show, say}. The step is shown on screen,
+   `say` is read by the device's own voice (Web Speech API) and shown as subtitles. */
+const LV = { lesson: null, i: 0, k: 0, playing: false, token: 0, timer: 0, opener: null, voice: null, prefs: { rate: 1, auto: true } };
+try { Object.assign(LV.prefs, JSON.parse(localStorage.getItem('lesson-prefs')) || {}); } catch (e) { /* ignore */ }
+const saveLV = () => { try { localStorage.setItem('lesson-prefs', JSON.stringify(LV.prefs)); } catch (e) { /* ignore */ } };
+const hasTTS = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+function pickVoice() {
+  if (!hasTTS) return;
+  const vs = speechSynthesis.getVoices();
+  LV.voice = vs.find((v) => v.lang === 'el-GR' && v.localService) || vs.find((v) => /^el/i.test(v.lang)) || null;
+  if (LV.lesson) noteVoice();
+}
+if (hasTTS) { pickVoice(); speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', pickVoice); }
+const sentences = (t) => (t.match(/[^.!;?]+[.!;?]*/g) || [t]).map((x) => x.trim()).filter(Boolean);
+
+function lvDialog() {
+  let d = $('#lv');
+  if (d) return d;
+  document.body.insertAdjacentHTML('beforeend', `<dialog id="lv" class="lv" aria-labelledby="lv-t">
+  <div class="lv-head"><h2 id="lv-t"></h2><button class="lv-x" id="lv-x" aria-label="Κλείσιμο">✕</button></div>
+  <div class="lv-prog"><div class="lv-dots" id="lv-dots"></div><span class="muted lv-count" id="lv-count"></span></div>
+  <div class="bar lv-bar"><i id="lv-bar"></i></div>
+  <h3 class="lv-st" id="lv-st"></h3>
+  <div class="lv-stage" id="lv-stage"></div>
+  <p class="lv-cap" id="lv-cap" aria-live="polite"></p>
+  <p class="lv-note" id="lv-note" hidden></p>
+  <div class="lv-ctrl">
+    <button class="btn ghost" id="lv-prev" aria-label="Προηγούμενο βήμα">◀ Πίσω</button>
+    <button class="btn" id="lv-play">▶ Παίξε</button>
+    <button class="btn ghost" id="lv-next" aria-label="Επόμενο βήμα">Επόμενο ▶</button>
+    <button class="btn ghost" id="lv-again" aria-label="Ξανά αυτό το βήμα">↺ Ξανά</button>
+  </div>
+  <div class="lv-opt">
+    <label>Ταχύτητα <select id="lv-rate"><option value="0.75">αργά</option><option value="1">κανονικά</option><option value="1.2">γρήγορα</option></select></label>
+    <label class="lv-auto"><input type="checkbox" id="lv-auto"> Συνέχεια αυτόματα</label>
+  </div>
+</dialog>`);
+  d = $('#lv');
+  $('#lv-x').onclick = () => d.close();
+  d.addEventListener('close', lvStop);
+  // a click on the dark backdrop (outside the box) closes the video
+  d.addEventListener('click', (e) => { if (e.target !== d) return; const r = d.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close(); });
+  $('#lv-prev').onclick = () => lvGo(LV.i - 1);
+  $('#lv-next').onclick = () => lvGo(LV.i + 1);
+  $('#lv-again').onclick = () => { LV.playing = true; lvGo(LV.i); };
+  $('#lv-play').onclick = () => { LV.playing = !LV.playing; if (LV.playing) { if (LV.k >= sentences(LV.lesson.steps[LV.i].say).length) LV.k = 0; lvSpeak(); } else lvHalt(); lvButtons(); };
+  $('#lv-rate').onchange = (e) => { LV.prefs.rate = +e.target.value; saveLV(); if (LV.playing) lvSpeak(); };
+  $('#lv-auto').onchange = (e) => { LV.prefs.auto = e.target.checked; saveLV(); };
+  d.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'SELECT') return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); lvGo(LV.i + 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); lvGo(LV.i - 1); }
+  });
+  return d;
+}
+function noteVoice() {
+  const n = $('#lv-note'); if (!n) return;
+  if (!hasTTS || !LV.voice) {
+    n.hidden = false;
+    n.textContent = hasTTS
+      ? 'Η συσκευή δεν έχει ελληνική φωνή, γι’ αυτό διάβασε τους υπότιτλους. Μπορείς να προσθέσεις ελληνική φωνή από τις ρυθμίσεις της συσκευής (Προσβασιμότητα / Μετατροπή κειμένου σε ομιλία).'
+      : 'Αυτός ο browser δεν μπορεί να διαβάσει δυνατά. Διάβασε τους υπότιτλους.';
+  } else n.hidden = true;
+}
+async function openLesson(kind, btn) {
+  // iOS only lets a page speak after a tap: start (silently) inside the tap.
+  if (hasTTS) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) { /* ignore */ } }
+  if (LV.loading) return;
+  LV.loading = true;
+  try {
+    const l = await api(`/api/lesson?cat=${Q.cat}&seed=${Q.seed}&kind=${kind}`);
+    const d = lvDialog();
+    LV.lesson = l; LV.opener = btn; LV.playing = true;
+    $('#lv-t').textContent = '🎬 ' + l.title;
+    $('#lv-rate').value = String(LV.prefs.rate); if (!$('#lv-rate').value) $('#lv-rate').value = '1';
+    $('#lv-auto').checked = LV.prefs.auto;
+    $('#lv-dots').innerHTML = l.steps.map((s, i) => `<button class="lv-dot" data-i="${i}" title="${esc(s.title)}" aria-label="Βήμα ${i + 1}: ${esc(s.title)}">${i + 1}</button>`).join('');
+    d.querySelectorAll('.lv-dot').forEach((b) => (b.onclick = () => { LV.playing = true; lvGo(+b.dataset.i); }));
+    noteVoice();
+    if (!d.open) d.showModal();
+    lvGo(0);
+    $('#lv-play').focus();
+  } catch (e) {
+    $('#fb').innerHTML = netError(e);
+  } finally { LV.loading = false; }
+}
+function lvHalt() { LV.token++; clearTimeout(LV.timer); if (hasTTS) speechSynthesis.cancel(); }
+function lvStop() { lvHalt(); LV.playing = false; if (LV.opener && document.contains(LV.opener)) LV.opener.focus(); }
+function lvButtons() {
+  const n = LV.lesson.steps.length;
+  $('#lv-play').textContent = LV.playing ? '⏸ Παύση' : '▶ Παίξε';
+  $('#lv-prev').disabled = LV.i <= 0;
+  $('#lv-next').disabled = LV.i >= n - 1;
+}
+function lvGo(i) {
+  const steps = LV.lesson.steps;
+  if (i < 0 || i >= steps.length) return;
+  lvHalt();
+  LV.i = i; LV.k = 0;
+  const s = steps[i];
+  $('#lv-st').textContent = s.title;
+  $('#lv-count').textContent = `Βήμα ${i + 1} από ${steps.length}`;
+  $('#lv-bar').style.width = `${Math.round(((i + 1) / steps.length) * 100)}%`;
+  document.querySelectorAll('.lv-dot').forEach((b, j) => { b.classList.toggle('done', j < i); b.classList.toggle('cur', j === i); b.setAttribute('aria-current', j === i ? 'step' : 'false'); b.textContent = j < i ? '✓' : String(j + 1); });
+  const st = $('#lv-stage'); st.classList.remove('in'); st.innerHTML = `<div>${s.show}</div>`; void st.offsetWidth; st.classList.add('in');
+  $('#lv-cap').innerHTML = sentences(s.say).map((t, k) => `<span data-k="${k}">${esc(t)}</span>`).join(' ');
+  lvButtons();
+  if (LV.playing) lvSpeak();
+}
+function lvMark() { document.querySelectorAll('#lv-cap span').forEach((x) => x.classList.toggle('cur', +x.dataset.k === LV.k)); }
+function lvSpeak() {
+  lvHalt();
+  const my = LV.token;
+  const parts = sentences(LV.lesson.steps[LV.i].say);
+  const rate = LV.prefs.rate || 1;
+  const after = () => {
+    if (my !== LV.token) return;
+    LV.k++;
+    if (LV.k < parts.length) return say();
+    lvMark();
+    // end of step
+    if (LV.prefs.auto && LV.i < LV.lesson.steps.length - 1) LV.timer = setTimeout(() => { if (my === LV.token) lvGo(LV.i + 1); }, 1100 / rate);
+    else { LV.playing = false; lvButtons(); }
+  };
+  const say = () => {
+    lvMark();
+    const text = parts[LV.k];
+    if (hasTTS && LV.voice) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = LV.voice; u.lang = LV.voice.lang; u.rate = 0.95 * rate;
+      u.onend = after; u.onerror = (e) => { if (e.error !== 'interrupted' && e.error !== 'canceled') after(); };
+      speechSynthesis.speak(u);
+    } else {
+      // no voice: give time to read the subtitle
+      LV.timer = setTimeout(after, Math.max(1800, text.length * 75) / rate);
+    }
+  };
+  say();
+}
+
 /* ---------- boot ---------- */
 (async function boot() {
   try {
     const r = await api('/api/categories');
-    CATS = r.categories; TAGS = r.tags; CHAPTERS = r.chapters;
+    CATS = r.categories; TAGS = r.tags; CHAPTERS = r.chapters; METHOD_CATS = r.method_cats || [];
     route();
   } catch (e) {
     app.innerHTML = netError(e) + '<div class="row" style="margin-top:12px"><button class="btn" onclick="location.reload()">Δοκίμασε ξανά</button></div>';
