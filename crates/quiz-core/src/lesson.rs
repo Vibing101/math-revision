@@ -18,6 +18,30 @@ pub struct Step {
     pub title: String,
     pub say: String,
     pub show: String,
+    /// `say` split into sentences: the player speaks (and highlights) one at a time.
+    pub parts: Vec<String>,
+}
+
+/// Split spoken text into sentences, keeping the closing punctuation.
+pub fn sentences(t: &str) -> Vec<String> {
+    let mut out = vec![];
+    let mut cur = String::new();
+    let mut ending = false;
+    for c in t.chars() {
+        let end = matches!(c, '.' | '!' | ';' | '?');
+        if ending && !end {
+            if !cur.trim().is_empty() {
+                out.push(cur.trim().to_string());
+            }
+            cur.clear();
+        }
+        ending = end;
+        cur.push(c);
+    }
+    if !cur.trim().is_empty() {
+        out.push(cur.trim().to_string());
+    }
+    out
 }
 
 #[derive(Serialize)]
@@ -27,10 +51,12 @@ pub struct Lesson {
 }
 
 fn st(title: &str, show: impl Into<String>, say: impl Into<String>) -> Step {
+    let say: String = say.into();
     Step {
         title: title.into(),
         show: show.into(),
-        say: say.into(),
+        parts: sentences(&say),
+        say,
     }
 }
 
@@ -854,6 +880,12 @@ pub fn method(q: &Question) -> Option<Lesson> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn sentences_split() {
+        assert_eq!(sentences("Α. Β; Γ!"), vec!["Α.", "Β;", "Γ!"]);
+        assert_eq!(sentences("3,5 και 0,6."), vec!["3,5 και 0,6."]);
+    }
+
     #[test]
     fn speech_is_readable() {
         assert_eq!(

@@ -10,11 +10,14 @@
 //! | GET  /api/hint?cat&seed&n      | hint n (0–3)                                      |
 //! | POST /api/check                | checks answers, returns feedback / solution       |
 //! | GET  /api/lesson?cat&seed&kind | narrated step lesson: kind=instr or kind=method   |
+//! | GET  /api/tts?…&step&k&v       | one lesson sentence as speech (Azure, cached)     |
 //! | POST /api/teacher/login        | PIN → signed session token                        |
 //! | GET  /api/teacher/resources    | printable test and its solutions (token required) |
 //! | GET  /api/teacher/worksheet    | worksheet with answer key (token required)        |
 //!
 //! The teacher PIN lives in the `TEACHER_PIN` secret, never in the page.
+//! Natural voices need the `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` secrets;
+//! without them the page uses the device's own voice.
 
 use hmac::{Hmac, Mac};
 use quiz_core::{
@@ -169,6 +172,119 @@ fn choices(p: &quiz_core::model::Part) -> String {
     }
 }
 
+/// Azure neural voices: `m` Νέστορας, `f` Αθηνά.
+fn azure_voice(v: &str) -> &'static str {
+    if v == "f" {
+        "el-GR-AthinaNeural"
+    } else {
+        "el-GR-NestorasNeural"
+    }
+}
+
+fn azure(env: &Env) -> Option<(String, String)> {
+    let get = |k: &str| {
+        env.secret(k)
+            .ok()
+            .map(|s| s.to_string())
+            .or_else(|| env.var(k).ok().map(|s| s.to_string()))
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+    };
+    Some((get("AZURE_SPEECH_KEY")?, get("AZURE_SPEECH_REGION")?))
+}
+
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
+/// The sentence the player asks for, taken from the lesson itself: the endpoint never
+/// speaks arbitrary text, so nobody can use the speech quota for anything else.
+fn lesson_sentence(q: &std::collections::HashMap<String, String>) -> Option<String> {
+    let question = generate(q.get("cat")?, seed_of(q)?)?;
+    let lesson = match q.get("kind").map(String::as_str) {
+        Some("method") => quiz_core::lesson::method(&question)?,
+        _ => quiz_core::lesson::instructions(&question),
+    };
+    let step: usize = q.get("step")?.parse().ok()?;
+    let k: usize = q.get("k")?.parse().ok()?;
+    lesson.steps.get(step)?.parts.get(k).cloned()
+}
+
+async fn tts(req: Request, env: &Env) -> Result<Response> {
+    let Some((key, region)) = azure(env) else {
+        return bad("δεν υπάρχει φυσική φωνή", 503);
+    };
+    let q = query(&req)?;
+    let Some(text) = lesson_sentence(&q) else {
+        return bad("δεν βρέθηκε", 404);
+    };
+    let voice = azure_voice(q.get("v").map(String::as_str).unwrap_or("m"));
+    // Same sentence + voice → same audio, whatever question it came from.
+    let digest = hex(&<Sha256 as sha2::Digest>::digest(
+        format!("{voice}|{text}").as_bytes(),
+    ));
+    let cache_key = format!("https://maths.savvy-des.com/tts-cache/{digest}.mp3");
+    let cache = Cache::default();
+    if let Ok(Some(hit)) = cache.get(&cache_key, false).await {
+        return Ok(hit);
+    }
+    if let Ok(limiter) = env.rate_limiter("TTS_LIMITER") {
+        let ip = req
+            .headers()
+            .get("cf-connecting-ip")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "unknown".into());
+        if let Ok(outcome) = limiter.limit(ip).await {
+            if !outcome.success {
+                return bad("Πολλά αιτήματα φωνής. Δοκίμασε ξανά σε λίγο.", 429);
+            }
+        }
+    }
+    let ssml = format!(
+        "<speak version='1.0' xml:lang='el-GR'><voice name='{voice}'><prosody rate='-6%'>{}</prosody></voice></speak>",
+        xml_escape(&text)
+    );
+    let headers = Headers::new();
+    headers.set("Ocp-Apim-Subscription-Key", &key)?;
+    headers.set("Content-Type", "application/ssml+xml")?;
+    headers.set(
+        "X-Microsoft-OutputFormat",
+        "audio-24khz-48kbitrate-mono-mp3",
+    )?;
+    headers.set("User-Agent", "maths-savvy-des")?;
+    let mut init = RequestInit::new();
+    init.with_method(Method::Post)
+        .with_headers(headers)
+        .with_body(Some(ssml.into()));
+    let url = format!("https://{region}.tts.speech.microsoft.com/cognitiveservices/v1");
+    let mut res = match Fetch::Request(Request::new_with_init(&url, &init)?)
+        .send()
+        .await
+    {
+        Ok(r) if r.status_code() == 200 => r,
+        Ok(r) => {
+            console_error!("azure tts: status {}", r.status_code());
+            return bad("η φυσική φωνή δεν είναι διαθέσιμη", 502);
+        }
+        Err(e) => {
+            console_error!("azure tts: {e}");
+            return bad("η φυσική φωνή δεν είναι διαθέσιμη", 502);
+        }
+    };
+    let audio = res.bytes().await?;
+    let mut out = Response::from_bytes(audio)?;
+    out.headers_mut().set("content-type", "audio/mpeg")?;
+    out.headers_mut()
+        .set("cache-control", "public, max-age=31536000, immutable")?;
+    let _ = cache.put(&cache_key, out.cloned()?).await;
+    Ok(out)
+}
+
 #[derive(Deserialize)]
 struct CheckReq {
     cat: String,
@@ -186,9 +302,9 @@ struct LoginReq {
 #[event(fetch)]
 async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     Router::new()
-        .get("/api/categories", |_, _| {
+        .get("/api/categories", |_, ctx| {
             let tags: serde_json::Map<String, Value> = TAGS.iter().map(|(k, v)| (k.to_string(), Value::from(*v))).collect();
-            json_res(&json!({ "chapters": CHAPTERS, "categories": CATEGORIES, "tags": tags, "method_cats": quiz_core::lesson::METHOD_CATS }), 200)
+            json_res(&json!({ "chapters": CHAPTERS, "categories": CATEGORIES, "tags": tags, "method_cats": quiz_core::lesson::METHOD_CATS, "tts": azure(&ctx.env).is_some() }), 200)
         })
         .get("/api/question", |req, _| {
             let q = query(&req)?;
@@ -220,6 +336,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                 None => bad("δεν υπάρχει βίντεο μεθόδου για αυτή την άσκηση", 404),
             }
         })
+        .get_async("/api/tts", |req, ctx| async move { tts(req, &ctx.env).await })
         .post_async("/api/check", |mut req, _| async move {
             let Ok(body) = req.json::<CheckReq>().await else { return bad("μη έγκυρο αίτημα", 400) };
             match generate(&body.cat, body.seed) {

@@ -25,7 +25,7 @@ let S = fresh();
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s.points === 'number') S = Object.assign(fresh(), s); } catch (e) { /* private mode */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } };
 const cs = (id) => S.cats[id] || (S.cats[id] = { att: 0, ok: 0, first: 0 });
-let CATS = [], TAGS = {}, CHAPTERS = [], METHOD_CATS = [];
+let CATS = [], TAGS = {}, CHAPTERS = [], METHOD_CATS = [], NATURAL_TTS = false;
 const chCats = (ch) => CATS.filter((c) => c.chapter === ch);
 const GRADES = [{ id: 'a', name: 'Α΄ Γυμνασίου' }, { id: 'g', name: 'Γ΄ Γυμνασίου' }];
 const gradeName = () => (GRADES.find((g) => g.id === S.grade) || GRADES[0]).name;
@@ -390,7 +390,11 @@ function worksheetHTML(ws) {
 /* ---------- narrated step "videos" (instructions / method) ----------
    Each lesson is a list of steps {title, show, say}. The step is shown on screen,
    `say` is read by the device's own voice (Web Speech API) and shown as subtitles. */
-const LV = { lesson: null, i: 0, k: 0, playing: false, token: 0, timer: 0, opener: null, voice: null, prefs: { rate: 1, auto: true } };
+const LV = { lesson: null, kind: 'instr', i: 0, k: 0, playing: false, token: 0, timer: 0, opener: null, voice: null, audio: null, prefs: { rate: 1, auto: true } };
+/** Natural (Azure) voices, spoken by the server. */
+const NATURAL = [{ id: 'az:m', name: 'Νέστορας (φυσική φωνή)' }, { id: 'az:f', name: 'Αθηνά (φυσική φωνή)' }];
+const naturalVoice = () => (NATURAL_TTS && !(LV.prefs.voice && !LV.prefs.voice.startsWith('az:')) ? LV.prefs.voice || 'az:m' : null);
+const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 try { Object.assign(LV.prefs, JSON.parse(localStorage.getItem('lesson-prefs')) || {}); } catch (e) { /* ignore */ }
 const saveLV = () => { try { localStorage.setItem('lesson-prefs', JSON.stringify(LV.prefs)); } catch (e) { /* ignore */ } };
 const hasTTS = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
@@ -398,7 +402,6 @@ const greekVoices = () => (hasTTS ? speechSynthesis.getVoices().filter((v) => /^
 /** Better-sounding voices first: the pupil's saved choice, then enhanced / premium ones. */
 const voiceScore = (v) => (/premium|enhanced|ενισχυμ|βελτιωμ|neural|natural|online/i.test(v.name) ? 2 : 0) + (v.localService ? 0 : 1);
 function pickVoice() {
-  if (!hasTTS) return;
   const vs = greekVoices();
   LV.voice = vs.find((v) => v.voiceURI === LV.prefs.voice) || vs.slice().sort((a, b) => voiceScore(b) - voiceScore(a))[0] || null;
   fillVoices();
@@ -407,9 +410,12 @@ function pickVoice() {
 function fillVoices() {
   const sel = $('#lv-voice'); if (!sel) return;
   const vs = greekVoices();
-  sel.innerHTML = vs.map((v) => `<option value="${esc(v.voiceURI)}">${esc(v.name)}</option>`).join('');
-  sel.parentElement.hidden = vs.length < 2;
-  if (LV.voice) sel.value = LV.voice.voiceURI;
+  const opts = (NATURAL_TTS ? NATURAL : []).map((v) => `<option value="${v.id}">${esc(v.name)}</option>`)
+    .concat(vs.map((v) => `<option value="${esc(v.voiceURI)}">${esc(v.name)} (συσκευής)</option>`));
+  sel.innerHTML = opts.join('');
+  sel.parentElement.hidden = opts.length < 2;
+  const nat = naturalVoice();
+  if (nat) sel.value = nat; else if (LV.voice) sel.value = LV.voice.voiceURI;
 }
 if (hasTTS) { pickVoice(); speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', pickVoice); }
 const sentences = (t) => (t.match(/[^.!;?]+[.!;?]*/g) || [t]).map((x) => x.trim()).filter(Boolean);
@@ -445,7 +451,7 @@ function lvDialog() {
   $('#lv-prev').onclick = () => lvGo(LV.i - 1);
   $('#lv-next').onclick = () => lvGo(LV.i + 1);
   $('#lv-again').onclick = () => { LV.playing = true; lvGo(LV.i); };
-  $('#lv-play').onclick = () => { LV.playing = !LV.playing; if (LV.playing) { if (LV.k >= sentences(LV.lesson.steps[LV.i].say).length) LV.k = 0; lvSpeak(); } else lvHalt(); lvButtons(); };
+  $('#lv-play').onclick = () => { LV.playing = !LV.playing; if (LV.playing) { if (LV.k >= LV.lesson.steps[LV.i].parts.length) LV.k = 0; lvSpeak(); } else lvHalt(); lvButtons(); };
   $('#lv-rate').onchange = (e) => { LV.prefs.rate = +e.target.value; saveLV(); if (LV.playing) lvSpeak(); };
   $('#lv-voice').onchange = (e) => { LV.prefs.voice = e.target.value; saveLV(); pickVoice(); if (LV.playing) lvSpeak(); };
   $('#lv-auto').onchange = (e) => { LV.prefs.auto = e.target.checked; saveLV(); };
@@ -458,7 +464,7 @@ function lvDialog() {
 }
 function noteVoice() {
   const n = $('#lv-note'); if (!n) return;
-  if (!hasTTS || !LV.voice) {
+  if (!naturalVoice() && (!hasTTS || !LV.voice)) {
     n.hidden = false;
     n.textContent = hasTTS
       ? 'Η συσκευή δεν έχει ελληνική φωνή, γι’ αυτό διάβασε τους υπότιτλους. Μπορείς να προσθέσεις ελληνική φωνή από τις ρυθμίσεις της συσκευής (Προσβασιμότητα / Μετατροπή κειμένου σε ομιλία).'
@@ -468,12 +474,13 @@ function noteVoice() {
 async function openLesson(kind, btn) {
   // iOS only lets a page speak after a tap: start (silently) inside the tap.
   if (hasTTS) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) { /* ignore */ } }
+  if (NATURAL_TTS) { try { LV.audio = LV.audio || new Audio(); LV.audio.src = SILENT; LV.audio.play().catch(() => {}); } catch (e) { /* ignore */ } }
   if (LV.loading) return;
   LV.loading = true;
   try {
     const l = await api(`/api/lesson?cat=${Q.cat}&seed=${Q.seed}&kind=${kind}`);
     const d = lvDialog();
-    LV.lesson = l; LV.opener = btn; LV.playing = true;
+    LV.lesson = l; LV.kind = kind; LV.opener = btn; LV.playing = true;
     $('#lv-t').textContent = '🎬 ' + l.title;
     $('#lv-rate').value = String(LV.prefs.rate); if (!$('#lv-rate').value) $('#lv-rate').value = '1';
     $('#lv-auto').checked = LV.prefs.auto;
@@ -487,7 +494,11 @@ async function openLesson(kind, btn) {
     $('#fb').innerHTML = netError(e);
   } finally { LV.loading = false; }
 }
-function lvHalt() { LV.token++; clearTimeout(LV.timer); if (hasTTS) speechSynthesis.cancel(); }
+function lvHalt() {
+  LV.token++; clearTimeout(LV.timer);
+  if (hasTTS) speechSynthesis.cancel();
+  if (LV.audio) { LV.audio.onended = LV.audio.onerror = null; LV.audio.pause(); }
+}
 function lvStop() { lvHalt(); LV.playing = false; if (LV.opener && document.contains(LV.opener)) LV.opener.focus(); }
 function lvButtons() {
   const n = LV.lesson.steps.length;
@@ -506,7 +517,7 @@ function lvGo(i) {
   $('#lv-bar').style.width = `${Math.round(((i + 1) / steps.length) * 100)}%`;
   document.querySelectorAll('.lv-dot').forEach((b, j) => { b.classList.toggle('done', j < i); b.classList.toggle('cur', j === i); b.setAttribute('aria-current', j === i ? 'step' : 'false'); b.textContent = j < i ? '✓' : String(j + 1); });
   const st = $('#lv-stage'); st.classList.remove('in'); st.innerHTML = `<div>${s.show}</div>`; void st.offsetWidth; st.classList.add('in');
-  $('#lv-cap').innerHTML = sentences(s.say).map((t, k) => `<span data-k="${k}">${esc(t)}</span>`).join(' ');
+  $('#lv-cap').innerHTML = s.parts.map((t, k) => `<span data-k="${k}">${esc(t)}</span>`).join(' ');
   lvButtons();
   if (LV.playing) lvSpeak();
 }
@@ -514,7 +525,8 @@ function lvMark() { document.querySelectorAll('#lv-cap span').forEach((x) => x.c
 function lvSpeak() {
   lvHalt();
   const my = LV.token;
-  const parts = sentences(LV.lesson.steps[LV.i].say);
+  const parts = LV.lesson.steps[LV.i].parts;
+  const ttsUrl = (step, k) => `/api/tts?cat=${encodeURIComponent(Q.cat)}&seed=${Q.seed}&kind=${LV.kind}&step=${step}&k=${k}&v=${naturalVoice() === 'az:f' ? 'f' : 'm'}`;
   const rate = LV.prefs.rate || 1;
   const after = () => {
     if (my !== LV.token) return;
@@ -528,6 +540,22 @@ function lvSpeak() {
   const say = () => {
     lvMark();
     const text = parts[LV.k];
+    if (naturalVoice()) {
+      const a = LV.audio || (LV.audio = new Audio());
+      let failed = false;
+      const fail = () => { if (failed || my !== LV.token) return; failed = true; a.onended = a.onerror = null; device(text); };
+      a.onended = () => { if (my === LV.token) after(); };
+      a.onerror = fail;
+      a.src = ttsUrl(LV.i, LV.k);
+      a.playbackRate = rate;
+      a.play().catch(fail);
+      // fetch the next sentence while this one plays
+      const steps = LV.lesson.steps;
+      const nx = LV.k + 1 < parts.length ? [LV.i, LV.k + 1] : LV.i + 1 < steps.length ? [LV.i + 1, 0] : null;
+      if (nx) fetch(ttsUrl(nx[0], nx[1])).catch(() => {});
+    } else device(text);
+  };
+  const device = (text) => {
     if (hasTTS && LV.voice) {
       const u = new SpeechSynthesisUtterance(text);
       u.voice = LV.voice; u.lang = LV.voice.lang; u.rate = 0.95 * rate;
@@ -545,7 +573,7 @@ function lvSpeak() {
 (async function boot() {
   try {
     const r = await api('/api/categories');
-    CATS = r.categories; TAGS = r.tags; CHAPTERS = r.chapters; METHOD_CATS = r.method_cats || [];
+    CATS = r.categories; TAGS = r.tags; CHAPTERS = r.chapters; METHOD_CATS = r.method_cats || []; NATURAL_TTS = !!r.tts;
     route();
   } catch (e) {
     app.innerHTML = netError(e) + '<div class="row" style="margin-top:12px"><button class="btn" onclick="location.reload()">Δοκίμασε ξανά</button></div>';
