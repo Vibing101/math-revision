@@ -25,8 +25,37 @@ use sha2::Sha256;
 use worker::*;
 
 const TOKEN_HOURS: u64 = 12;
-const EXAM: &str = include_str!("../teacher/exam.html");
-const SOLUTIONS: &str = include_str!("../teacher/solutions.html");
+/// Printable tests for the teacher area: (id, grade, title, test, solutions).
+const PAPERS: &[(&str, &str, &str, &str, &str)] = &[
+    (
+        "a-diairetotita",
+        "a",
+        "Επαναληπτικό: Διαιρετότητα",
+        include_str!("../teacher/exam.html"),
+        include_str!("../teacher/solutions.html"),
+    ),
+    (
+        "g-parag-1",
+        "g",
+        "Παραγοντοποίηση – Εξισώσεις: Διαγώνισμα 1",
+        include_str!("../teacher/g_test1.html"),
+        include_str!("../teacher/g_test1_sol.html"),
+    ),
+    (
+        "g-parag-2",
+        "g",
+        "Παραγοντοποίηση – Εξισώσεις: Διαγώνισμα 2",
+        include_str!("../teacher/g_test2.html"),
+        include_str!("../teacher/g_test2_sol.html"),
+    ),
+    (
+        "g-parag-3",
+        "g",
+        "Παραγοντοποίηση – Εξισώσεις: Διαγώνισμα 3",
+        include_str!("../teacher/g_test3.html"),
+        include_str!("../teacher/g_test3_sol.html"),
+    ),
+];
 
 fn json_res(v: &Value, status: u16) -> Result<Response> {
     let mut r = Response::from_json(v)?.with_status(status);
@@ -209,7 +238,11 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             if !authorised(&req, &ctx.env) {
                 return bad("Χρειάζεται PIN.", 401);
             }
-            json_res(&json!({ "exam": EXAM, "solutions": SOLUTIONS }), 200)
+            let papers: Vec<Value> = PAPERS
+                .iter()
+                .map(|(id, grade, title, exam, sol)| json!({ "id": id, "grade": grade, "title": title, "exam": exam, "solutions": sol }))
+                .collect();
+            json_res(&json!({ "papers": papers }), 200)
         })
         .get("/api/teacher/worksheet", |req, ctx| {
             if !authorised(&req, &ctx.env) {

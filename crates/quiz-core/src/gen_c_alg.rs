@@ -413,7 +413,13 @@ pub fn c_factor(r: &mut Rng) -> Question {
 pub fn c_eq2(r: &mut Rng) -> Question {
     let v = "x";
     let vv = "<i>x</i>";
-    match r.r(0, 3) {
+    match r.r(0, 9) {
+        4 => eq_product_const(r),
+        5 => eq_equal_squares(r),
+        6 => eq_kind(r),
+        7 => eq_split(r),
+        8 => eq_word(r),
+        9 => eq_param(r),
         0 | 1 => {
             let (p, q) = loop {
                 let (p, q) = (r.r(0, 18) as i64 - 9, r.r(0, 18) as i64 - 9);
@@ -630,5 +636,458 @@ pub fn c_rational(r: &mut Rng) -> Question {
                 diagnose: no_diag(),
             }
         }
+    }
+}
+
+// ---------- exam-style equations (from the school tests) ----------
+
+fn ordered_roots(a: (i64, i64), b: (i64, i64)) -> ((i64, i64), (i64, i64)) {
+    if a.0 * b.1 <= b.0 * a.1 {
+        (a, b)
+    } else {
+        (b, a)
+    }
+}
+
+/// (x − p)(x − q) = c, which becomes a trinomial with integer roots.
+fn eq_product_const(r: &mut Rng) -> Question {
+    let vv = "<i>x</i>";
+    let (r1, r2) = loop {
+        let (a, b) = (r.r(0, 18) as i64 - 9, r.r(0, 18) as i64 - 9);
+        if a != b {
+            break (a, b);
+        }
+    };
+    let p = nz(r, -9, 9);
+    let q = r1 + r2 - p;
+    let c = p * q - r1 * r2;
+    if c == 0 {
+        return eq_product_const(r);
+    }
+    let eq = format!("{}{} = {}", lin(1, -p, "x"), lin(1, -q, "x"), signed(c));
+    let tri = poly(&[(1, 2), (-(r1 + r2), 1), (r1 * r2, 0)], "x");
+    Question {
+        cat: "c-eq2",
+        prompt: format!("Λύσε την εξίσωση <span class=\"big\">{eq}</span>."),
+        groups: one(vec![slots(&[&format!("{vv} = "), &format!(" ή {vv} = "), ""], vec![r1, r2], true)]),
+        hints: hints(
+            "Δεν μπορείς να πεις «ένας παράγοντας ίσος με τον αριθμό»: αυτό ισχύει μόνο όταν το δεύτερο μέλος είναι 0.",
+            "Κάνε τις πράξεις στο πρώτο μέλος και φέρε όλους τους όρους στο ένα μέλος.",
+            format!("{tri} = 0"),
+            format!("{vv} = {} ή {vv} = {}", signed(r1), signed(r2)),
+        ),
+        solution: format!(
+            "{} = {} ⇔ {tri} = 0 ⇔ {}{} = 0 ⇔ <b>{vv} = {} ή {vv} = {}</b>",
+            poly(&[(1, 2), (-(p + q), 1), (p * q, 0)], "x"),
+            signed(c),
+            lin(1, -r1, "x"),
+            lin(1, -r2, "x"),
+            signed(r1),
+            signed(r2)
+        ),
+        diagnose: Box::new(move |v| match &v[0] {
+            Val::Ints(u) if same_bag(u, &[p, q]) => vec![dm("eq-product-const", format!("Τα {} και {} μηδενίζουν τους παράγοντες, αλλά εδώ το δεύτερο μέλος είναι {}, όχι 0. Κάνε πρώτα τις πράξεις.", signed(p), signed(q), signed(c)))],
+            _ => vec![],
+        }),
+    }
+}
+
+/// (x − a)² = (b x + c)²  ⇒  difference of squares.
+fn eq_equal_squares(r: &mut Rng) -> Question {
+    let vv = "<i>x</i>";
+    let (a, b, c) = loop {
+        let (a, b, c) = (nz(r, -6, 6), r.r(2, 5) as i64, nz(r, -6, 6));
+        if a + c != 0 && a != c {
+            break (a, b, c);
+        }
+    };
+    // x − a = b x + c  ⇒ x = (a + c)/(1 − b);  x − a = −(b x + c) ⇒ x = (a − c)/(1 + b)
+    let x1 = reduce(a + c, 1 - b);
+    let x2 = reduce(a - c, 1 + b);
+    let (lo, hi) = ordered_roots(x1, x2);
+    let eq = format!("{}² = {}²", lin(1, -a, "x"), lin(b, c, "x"));
+    Question {
+        cat: "c-eq2",
+        prompt: format!("Λύσε την εξίσωση <span class=\"big\">{eq}</span>.<br><span class=\"muted\">Γράψε τις ρίζες ως ανάγωγα κλάσματα (ή ακέραιους).</span>"),
+        groups: one(vec![frac("Μικρότερη ρίζα:", lo.0, lo.1), frac("Μεγαλύτερη ρίζα:", hi.0, hi.1)]),
+        hints: hints(
+            "Φέρε τα πάντα στο πρώτο μέλος: Α² − Β² = 0.",
+            "Διαφορά τετραγώνων: (Α − Β)(Α + Β) = 0.",
+            format!("({vv} − {a} − ({}))·({vv} − {a} + {}) = 0", poly(&[(b, 1), (c, 0)], "x"), poly(&[(b, 1), (c, 0)], "x")).replace("− -", "+ ").replace("− −", "+ "),
+            format!("{vv} = {} ή {vv} = {}", fr(x1.0, x1.1), fr(x2.0, x2.1)),
+        ),
+        solution: format!(
+            "{eq} ⇔ {}² − {}² = 0 ⇔ [{} − {}][{} + {}] = 0 ⇔ ({})·({}) = 0 ⇔ <b>{vv} = {} ή {vv} = {}</b>",
+            lin(1, -a, "x"),
+            lin(b, c, "x"),
+            lin(1, -a, "x"),
+            lin(b, c, "x"),
+            lin(1, -a, "x"),
+            lin(b, c, "x"),
+            poly(&[(1 - b, 1), (-a - c, 0)], "x"),
+            poly(&[(1 + b, 1), (c - a, 0)], "x"),
+            fr(x1.0, x1.1),
+            fr(x2.0, x2.1)
+        ),
+        diagnose: Box::new(|_| vec![tag("eq-squares")]),
+    }
+}
+
+/// How many roots: two, one double, or none.
+fn eq_kind(r: &mut Rng) -> Question {
+    let vv = "<i>x</i>";
+    let kind = r.r(0, 2);
+    let (bco, cco, how) = match kind {
+        0 => {
+            let (p, q) = loop {
+                let (p, q) = (nz(r, -8, 8), nz(r, -8, 8));
+                if p != q {
+                    break (p, q);
+                }
+            };
+            (
+                -(p + q),
+                p * q,
+                format!(
+                    "{}{} = 0 ⇔ {vv} = {} ή {vv} = {}: δύο άνισες ρίζες.",
+                    lin(1, -p, "x"),
+                    lin(1, -q, "x"),
+                    signed(p),
+                    signed(q)
+                ),
+            )
+        }
+        1 => {
+            let h = nz(r, -8, 8);
+            (
+                -2 * h,
+                h * h,
+                format!(
+                    "{}² = 0 ⇔ {vv} = {}: μία διπλή ρίζα.",
+                    lin(1, -h, "x"),
+                    signed(h)
+                ),
+            )
+        }
+        _ => {
+            let h = nz(r, -6, 6);
+            let k = r.r(1, 9) as i64;
+            (-2 * h, h * h + k, format!("{}² + {k} &gt; 0 για κάθε {vv}, άρα η εξίσωση είναι αδύνατη: δεν έχει πραγματικές ρίζες.", lin(1, -h, "x")))
+        }
+    };
+    let eq = format!("{} = 0", poly(&[(1, 2), (bco, 1), (cco, 0)], "x"));
+    let opts = [
+        "Δύο άνισες πραγματικές ρίζες",
+        "Μία διπλή ρίζα",
+        "Καμία πραγματική ρίζα (αδύνατη)",
+    ];
+    Question {
+        cat: "c-eq2",
+        prompt: format!("Τι ρίζες έχει η εξίσωση <span class=\"big\">{eq}</span>;"),
+        groups: one(vec![select(
+            "Είδος ριζών:",
+            opts.iter()
+                .enumerate()
+                .map(|(i, o)| (i as i64, o.to_string()))
+                .collect(),
+            kind as i64,
+        )]),
+        hints: hints(
+            "Προσπάθησε να την παραγοντοποιήσεις (τριώνυμο ή τέλειο τετράγωνο).",
+            format!(
+                "Συμπλήρωσε τετράγωνο: {vv}² {} {}{vv} = ({vv} {} {})² − {}.",
+                if bco < 0 { "−" } else { "+" },
+                bco.abs(),
+                if bco < 0 { "−" } else { "+" },
+                fr(bco.abs(), 2),
+                fr(bco * bco, 4)
+            ),
+            "Αν καταλήξεις σε «τετράγωνο + θετικός αριθμός = 0», η εξίσωση είναι αδύνατη.",
+            opts[kind as usize].to_string(),
+        ),
+        solution: format!("{eq}: {how}"),
+        diagnose: Box::new(|_| vec![tag("eq-kind")]),
+    }
+}
+
+/// p x² + b x + c with one fractional root: split the middle term.
+fn eq_split(r: &mut Rng) -> Question {
+    let vv = "<i>x</i>";
+    let (pp, qq, s) = loop {
+        let (pp, qq, s) = (r.r(2, 3) as i64, nz(r, -5, 5), nz(r, -6, 6));
+        if qq % pp != 0 {
+            break (pp, qq, s);
+        }
+    };
+    // (pp x + qq)(x + s) = pp x² + (pp s + qq) x + qq s
+    let eq = format!(
+        "{} = 0",
+        poly(&[(pp, 2), (pp * s + qq, 1), (qq * s, 0)], "x")
+    );
+    let (lo, hi) = ordered_roots(reduce(-qq, pp), (-s, 1));
+    Question {
+        cat: "c-eq2",
+        prompt: format!("Λύσε την εξίσωση <span class=\"big\">{eq}</span>.<br><span class=\"muted\">Γράψε τις ρίζες ως ανάγωγα κλάσματα (ή ακέραιους).</span>"),
+        groups: one(vec![frac("Μικρότερη ρίζα:", lo.0, lo.1), frac("Μεγαλύτερη ρίζα:", hi.0, hi.1)]),
+        hints: hints(
+            format!("Σπάσε τον μεσαίο όρο σε δύο όρους με γινόμενο {}·{} = {}.", pp, signed(qq * s), signed(pp * qq * s)),
+            format!("{} = {}{vv}² {} {}{vv} {} {}{vv} {} {}", poly(&[(pp, 2), (pp * s + qq, 1), (qq * s, 0)], "x"), pp, if pp * s < 0 { "−" } else { "+" }, (pp * s).abs(), if qq < 0 { "−" } else { "+" }, qq.abs(), if qq * s < 0 { "−" } else { "+" }, (qq * s).abs()),
+            format!("Ομαδοποίηση: {}{}", lin(pp, qq, "x"), lin(1, s, "x")),
+            format!("{vv} = {} ή {vv} = {}", fr(-qq, pp), signed(-s)),
+        ),
+        solution: format!("{eq} ⇔ {}{} = 0 ⇔ <b>{vv} = {} ή {vv} = {}</b>", lin(pp, qq, "x"), lin(1, s, "x"), fr(-qq, pp), signed(-s)),
+        diagnose: Box::new(|_| vec![tag("eq-split")]),
+    }
+}
+
+/// Rectangle area problems that lead to a quadratic equation.
+fn eq_word(r: &mut Rng) -> Question {
+    let vv = "<i>x</i>";
+    let x0 = r.r(1, 9) as i64;
+    let (a, b) = (r.r(1, 9) as i64, r.r(1, 9) as i64);
+    let area = (x0 + a) * (x0 + b);
+    // a smaller rectangle whose area is exactly half
+    let small = (2..=area / 2)
+        .find(|w| (area / 2) % w == 0 && area % 2 == 0 && *w > 1 && area / 2 / w > 1)
+        .filter(|_| area % 2 == 0);
+    let (ctx, sol_t) = match small {
+        Some(w) if r.chance(0.6) => (
+            format!("Το εμβαδόν ορθογωνίου με διαστάσεις ({vv} + {a}) cm και ({vv} + {b}) cm είναι <b>διπλάσιο</b> από το εμβαδόν ορθογωνίου με διαστάσεις {w} cm και {} cm. Να βρεις το {vv}.", area / 2 / w),
+            format!("({vv} + {a})({vv} + {b}) = 2·{w}·{} = {area}", area / 2 / w),
+        ),
+        _ => (
+            format!("Ένα ορθογώνιο έχει διαστάσεις ({vv} + {a}) cm και ({vv} + {b}) cm και εμβαδόν {area} cm². Να βρεις το {vv}."),
+            format!("({vv} + {a})({vv} + {b}) = {area}"),
+        ),
+    };
+    let other = -(a + b) - x0;
+    Question {
+        cat: "c-eq2",
+        prompt: ctx,
+        groups: one(vec![num(format!("{vv} ="), x0 as u64)]),
+        hints: hints(
+            "Γράψε την εξίσωση του εμβαδού: μήκος · πλάτος = εμβαδόν.",
+            sol_t.clone(),
+            format!("{} = 0", poly(&[(1, 2), (a + b, 1), (a * b - area, 0)], "x")),
+            format!("Ρίζες {} και {}. Οι διαστάσεις πρέπει να είναι θετικές, άρα {vv} = {x0}.", signed(x0), signed(other)),
+        ),
+        solution: format!(
+            "{sol_t} ⇔ {} = 0 ⇔ {}{} = 0 ⇔ {vv} = {x0} ή {vv} = {}. Η αρνητική λύση απορρίπτεται (μήκος θετικό). <b>{vv} = {x0}</b>, διαστάσεις {} cm και {} cm.",
+            poly(&[(1, 2), (a + b, 1), (a * b - area, 0)], "x"),
+            lin(1, -x0, "x"),
+            lin(1, -other, "x"),
+            signed(other),
+            x0 + a,
+            x0 + b
+        ),
+        diagnose: no_diag(),
+    }
+}
+
+/// x = κ + t is a root of a trinomial: find κ.
+fn eq_param(r: &mut Rng) -> Question {
+    let vv = "<i>x</i>";
+    let (r1, r2) = loop {
+        let (a, b) = (r.r(1, 9) as i64, r.r(1, 9) as i64);
+        if a != b {
+            break (a, b);
+        }
+    };
+    let t = nz(r, -4, 5);
+    let eq = format!(
+        "{} = 0",
+        poly(&[(1, 2), (-(r1 + r2), 1), (r1 * r2, 0)], "x")
+    );
+    Question {
+        cat: "c-eq2",
+        prompt: format!("Να βρεις τις τιμές του κ, αν {vv} = κ {} {} είναι λύση της εξίσωσης <span class=\"big\">{eq}</span>.", if t < 0 { "−" } else { "+" }, t.abs()),
+        groups: one(vec![slots(&["κ = ", " ή κ = ", ""], vec![r1 - t, r2 - t], true)]),
+        hints: hints("Λύσε πρώτα την εξίσωση.", format!("{}{} = 0", lin(1, -r1, "x"), lin(1, -r2, "x")), format!("Οι λύσεις είναι {r1} και {r2}. Βάλε κ {} {} ίσο με καθεμία.", if t < 0 { "−" } else { "+" }, t.abs()), format!("κ = {} ή κ = {}", signed(r1 - t), signed(r2 - t))),
+        solution: format!("{eq} ⇔ {vv} = {r1} ή {vv} = {r2}. Άρα κ {} {} = {r1} ή κ {} {} = {r2}, δηλαδή <b>κ = {} ή κ = {}</b>.", if t < 0 { "−" } else { "+" }, t.abs(), if t < 0 { "−" } else { "+" }, t.abs(), signed(r1 - t), signed(r2 - t)),
+        diagnose: Box::new(move |v| match &v[0] {
+            Val::Ints(u) if same_bag(u, &[r1, r2]) => vec![msg("Αυτές είναι οι λύσεις για το x. Ζητείται το κ: λύσε κ + t = λύση.")],
+            _ => vec![],
+        }),
+    }
+}
+
+// ---------- composite factorizations and method names (from the school tests) ----------
+
+pub fn c_factor2(r: &mut Rng) -> Question {
+    let methods = [
+        "Κοινός παράγοντας",
+        "Ομαδοποίηση",
+        "Διαφορά τετραγώνων",
+        "Άθροισμα κύβων",
+        "Διαφορά κύβων",
+        "Τριώνυμο",
+        "Ανάπτυγμα τετραγώνου (τέλειο τετράγωνο)",
+    ];
+    if r.chance(0.35) {
+        let (k, m) = (r.r(2, 9) as i64, r.r(2, 6) as i64);
+        let (txt, idx): (String, usize) = match r.r(0, 6) {
+            0 => (format!("{k}αx + {k}αy = {k}α(x + y)"), 0),
+            1 => (format!("αx + αy + {k}x + {k}y = (x + y)(α + {k})"), 1),
+            2 => (
+                format!("{}x² − {} = ({m}x − {k})({m}x + {k})", m * m, k * k),
+                2,
+            ),
+            3 => (
+                format!("y³ + {} = (y + {m})(y² − {m}y + {})", m.pow(3), m * m),
+                3,
+            ),
+            4 => (
+                format!("α³ − {} = (α − {m})(α² + {m}α + {})", m.pow(3), m * m),
+                4,
+            ),
+            5 => (
+                format!("x² + {}x + {} = (x + {k})(x + {m})", k + m, k * m),
+                5,
+            ),
+            _ => (format!("{}x² − {}xy + y² = ({m}x − y)²", m * m, 2 * m), 6),
+        };
+        return Question {
+            cat: "c-factor2",
+            prompt: format!("Ποια μέθοδος παραγοντοποίησης εφαρμόστηκε;<br><span class=\"big\" style=\"font-size:1.2rem\">{txt}</span>"),
+            groups: one(vec![select("Μέθοδος:", methods.iter().enumerate().map(|(i, m)| (i as i64, m.to_string())).collect(), idx as i64)]),
+            hints: hints(
+                "Μέτρησε τους όρους: 2 όροι → κοινός παράγοντας, διαφορά τετραγώνων ή κύβοι. 3 όροι → τριώνυμο ή τέλειο τετράγωνο. 4 όροι → ομαδοποίηση.",
+                "Δες αν οι όροι είναι τετράγωνα ή κύβοι.",
+                "Τέλειο τετράγωνο: ο μεσαίος όρος είναι το διπλάσιο γινόμενο.",
+                methods[idx].to_string(),
+            ),
+            solution: format!("<b>{}</b>", methods[idx]),
+            diagnose: Box::new(|_| vec![tag("factor-method")]),
+        };
+    }
+    let (expr, right, wrongs, how): (String, String, Vec<String>, String) = match r.r(0, 4) {
+        0 => {
+            // k²(p − q y) + m² x²(q y − p)
+            // coprime pairs, so that nothing more can be factored out
+            let (k, m, p, q) = loop {
+                let (k, m, p, q) = (
+                    r.r(2, 5) as i64,
+                    r.r(2, 5) as i64,
+                    r.r(1, 5) as i64,
+                    r.r(2, 5) as i64,
+                );
+                if gcd(k as u64, m as u64) == 1 && gcd(p as u64, q as u64) == 1 {
+                    break (k, m, p, q);
+                }
+            };
+            (
+                format!("{}({p} − {q}y) + {}x²({q}y − {p})", k * k, m * m),
+                format!("({q}y − {p})({m}x − {k})({m}x + {k})"),
+                vec![format!("({p} − {q}y)({m}x − {k})({m}x + {k})"), format!("({q}y − {p})({m}x − {k})²"), format!("({q}y − {p})({}x² + {})", m * m, k * k)],
+                format!("{}({p} − {q}y) = −{}({q}y − {p}). Κοινός παράγοντας ({q}y − {p}): ({q}y − {p})({}x² − {}) και μετά διαφορά τετραγώνων.", k * k, k * k, m * m, k * k),
+            )
+        }
+        1 => {
+            // k x³ − k c³ + d x − d c
+            let (k, c, d) = loop {
+                let (k, c, d) = (r.r(1, 3) as i64, r.r(1, 3) as i64, r.r(1, 9) as i64);
+                // gcd(k, d) = 1, otherwise the quadratic factor still has a common factor
+                if gcd(k as u64, d as u64) == 1 {
+                    break (k, c, d);
+                }
+            };
+            (
+                format!("{}x³ − {} + {d}x − {}", if k == 1 { String::new() } else { k.to_string() }, k * c.pow(3), d * c),
+                format!("(x − {c})({}x² + {}x + {})", if k == 1 { String::new() } else { k.to_string() }, k * c, k * c * c + d),
+                vec![format!("(x − {c})({}x² + {}x + {})", if k == 1 { String::new() } else { k.to_string() }, k * c, k * c * c), format!("(x + {c})({}x² − {}x + {})", if k == 1 { String::new() } else { k.to_string() }, k * c, k * c * c + d), format!("(x − {c})²({}x + {d})", if k == 1 { String::new() } else { k.to_string() })],
+                format!("Ομαδοποίηση: {k}(x³ − {}) + {d}(x − {c}) = {k}(x − {c})(x² + {c}x + {}) + {d}(x − {c}) = (x − {c})[{k}(x² + {c}x + {}) + {d}]", c.pow(3), c * c, c * c),
+            )
+        }
+        2 => {
+            // x²(x − a) + B x(x − a) + C(a − x) with x² + Bx − C = (x + m)(x + n)
+            let (a, m, n) = (r.r(1, 5) as i64, nz(r, -6, 6), nz(r, -6, 6));
+            let (bb, cc) = (m + n, -m * n);
+            if cc == 0 || bb == 0 {
+                return c_factor2(r);
+            }
+            let bterm = if bb < 0 {
+                format!(" − {}x(x − {a})", -bb)
+            } else {
+                format!(" + {bb}x(x − {a})")
+            };
+            let cterm = if cc < 0 {
+                format!(" − {}({a} − x)", -cc)
+            } else {
+                format!(" + {cc}({a} − x)")
+            };
+            (
+                format!("x²(x − {a}){bterm}{cterm}"),
+                format!("(x − {a}){}{}", lin(1, m, "x"), lin(1, n, "x")).replace("<i>", "").replace("</i>", ""),
+                vec![format!("(x − {a}){}{}", lin(1, -m, "x"), lin(1, -n, "x")).replace("<i>", "").replace("</i>", ""), format!("(x − {a})(x² {} {}x {} {})", if bb < 0 { "−" } else { "+" }, bb.abs(), if cc < 0 { "−" } else { "+" }, cc.abs()), format!("(x − {a})²{}", lin(1, m + n, "x")).replace("<i>", "").replace("</i>", "")],
+                format!("Ο όρος με ({a} − x) γίνεται −(x − {a}). Κοινός παράγοντας (x − {a}): (x − {a})(x² {} {}x {} {}) και μετά τριώνυμο.", if bb < 0 { "−" } else { "+" }, bb.abs(), if cc < 0 { "+" } else { "−" }, cc.abs()),
+            )
+        }
+        3 => {
+            // (p x + 1)² − ψ²  written expanded
+            let p = r.r(2, 5) as i64;
+            (
+                format!("{}x² − ψ² + {}x + 1", p * p, 2 * p),
+                format!("({p}x + 1 − ψ)({p}x + 1 + ψ)"),
+                vec![
+                    format!("({p}x + 1)² − ψ²"),
+                    format!("({p}x − ψ)({p}x + ψ) + {}x + 1", 2 * p),
+                    format!("({p}x − 1 − ψ)({p}x − 1 + ψ)"),
+                ],
+                format!(
+                    "Ομαδοποίηση: ({}x² + {}x + 1) − ψ² = ({p}x + 1)² − ψ², διαφορά τετραγώνων.",
+                    p * p,
+                    2 * p
+                ),
+            )
+        }
+        _ => {
+            // k² α⁶ − m² β⁴ / n²
+            let (k, m, n) = (r.r(2, 9) as i64, r.r(2, 12) as i64, r.r(3, 11) as i64);
+            if gcd(m as u64, n as u64) != 1 {
+                return c_factor2(r);
+            }
+            (
+                format!("{}α⁶ − {}β⁴/{}", k * k, m * m, n * n),
+                format!("({k}α³ − {m}β²/{n})({k}α³ + {m}β²/{n})"),
+                vec![
+                    format!("({k}α³ − {m}β²/{n})²"),
+                    format!("({k}α² − {m}β/{n})({k}α² + {m}β/{n})"),
+                    format!(
+                        "({}α³ − {}β²/{})({}α³ + {}β²/{})",
+                        k * k,
+                        m * m,
+                        n * n,
+                        k * k,
+                        m * m,
+                        n * n
+                    ),
+                ],
+                format!(
+                    "{}α⁶ = ({k}α³)² και {}β⁴/{} = ({m}β²/{n})². Διαφορά τετραγώνων.",
+                    k * k,
+                    m * m,
+                    n * n
+                ),
+            )
+        }
+    };
+    let mut opts = vec![right.clone()];
+    for w in wrongs {
+        if !opts.contains(&w) {
+            opts.push(w);
+        }
+    }
+    Question {
+        cat: "c-factor2",
+        prompt: format!("Να αναλύσεις πλήρως σε γινόμενο πρώτων παραγόντων:<br><span class=\"big\" style=\"font-size:1.2rem\">{expr}</span>"),
+        groups: one(vec![choice(r, "Παραγοντοποίηση:", &opts)]),
+        hints: hints(
+            "Ψάξε πρώτα κοινό παράγοντα. Αν δύο παρενθέσεις διαφέρουν μόνο στο πρόσημο, βγάλε ένα −: (α − β) = −(β − α).",
+            "Με 4 όρους δοκίμασε ομαδοποίηση. Μετά δες αν κάτι αναλύεται κι άλλο (διαφορά τετραγώνων, τριώνυμο).",
+            how.clone(),
+            right.clone(),
+        ),
+        solution: format!("{how}<br><b>{expr} = {right}</b>"),
+        diagnose: Box::new(|_| vec![tag("factor")]),
     }
 }

@@ -325,8 +325,7 @@ function renderTeacherPanel() {
   const tags = Object.entries(S.tags).sort((a, b) => b[1] - a[1]);
   app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Αρχική</button><button class="btn ghost" id="logout">Αποσύνδεση</button></div><h1>Για τον εκπαιδευτικό</h1><p class="muted" style="margin:0">Τάξη: <b>${gradeName()}</b>. Η τάξη αλλάζει από την αρχική οθόνη.</p>
   <div class="tools">
-   ${S.grade === 'a' ? `<section class="card"><h2>Επαναληπτικό διαγώνισμα</h2><p class="muted" style="margin:0">Κεφάλαιο «Διαιρετότητα»: το έντυπο διαγώνισμα (15 ασκήσεις) και οι λύσεις του, έτοιμα για εκτύπωση.</p>
-    <div class="row"><button class="btn" id="open-exam">Διαγώνισμα</button><button class="btn ghost" id="open-sol">Λύσεις</button></div></section>` : ''}
+   <section class="card"><h2>Διαγωνίσματα για εκτύπωση</h2><p class="muted" style="margin:0">Έτοιμα διαγωνίσματα της ${gradeName()} με τις λύσεις τους.</p><div id="papers" class="papers"><span class="muted">Φόρτωση…</span></div></section>
    <section class="card"><h2>Φύλλο εργασίας</h2><p class="muted" style="margin:0">Καινούργιες ασκήσεις με απαντήσεις στο τέλος.</p>
     <label for="ws-cat">Ενότητα</label><select id="ws-cat"><optgroup label="Ολόκληρα κεφάλαια"><option value="chapters=${GCH().map((c) => c.id).join(',')}">Όλα τα κεφάλαια της ${gradeName()} (επανάληψη χρονιάς)</option>${GCH().map((ch) => `<option value="chapters=${ch.id}">Κεφάλαιο ${ch.number}: ${esc(ch.title)}</option>`).join('')}</optgroup>${GCH().map((ch) => `<optgroup label="${esc(ch.title)}">${chCats(ch.id).map((c) => `<option value="cat=${c.id}">${esc(c.title)}</option>`).join('')}</optgroup>`).join('')}</select>
     <label for="ws-n">Αριθμός ασκήσεων</label><select id="ws-n">${[6, 8, 10, 13, 15, 20].map((n) => `<option${n === 10 ? ' selected' : ''}>${n}</option>`).join('')}</select>
@@ -344,9 +343,21 @@ function renderTeacherPanel() {
   const r = $('#reset'); if (r) r.onclick = () => { confirmReset = true; renderTeacherPanel(); };
   const y = $('#yes'); if (y) y.onclick = () => { S = fresh(); save(); confirmReset = false; renderTeacherPanel(); };
   const n = $('#no'); if (n) n.onclick = () => { confirmReset = false; renderTeacherPanel(); };
-  if ($('#open-exam')) $('#open-exam').onclick = () => openDoc(async () => (await authed('/api/teacher/resources')).exam);
-  if ($('#open-sol')) $('#open-sol').onclick = () => openDoc(async () => (await authed('/api/teacher/resources')).solutions);
+  loadPapers();
   $('#ws-go').onclick = () => openDoc(async () => worksheetHTML(await authed(`/api/teacher/worksheet?${$('#ws-cat').value}&n=${$('#ws-n').value}&seed=${newSeed()}`)));
+}
+let PAPERS = null;
+async function loadPapers() {
+  const box = $('#papers');
+  try {
+    if (!PAPERS) PAPERS = (await authed('/api/teacher/resources')).papers;
+  } catch (e) {
+    if (e.status === 401) { memToken = null; setToken(null); renderPin('Η σύνδεση έληξε. Γράψτε ξανά το PIN.'); return; }
+    box.innerHTML = netError(e); return;
+  }
+  const mine = PAPERS.filter((p) => p.grade === S.grade);
+  box.innerHTML = mine.length ? mine.map((p, i) => `<div class="paper"><b>${esc(p.title)}</b><div class="row"><button class="btn" data-paper="${i}" data-kind="exam">Διαγώνισμα</button><button class="btn ghost" data-paper="${i}" data-kind="solutions">Λύσεις</button></div></div>`).join('') : '<span class="muted">Δεν υπάρχουν ακόμα έτοιμα διαγωνίσματα για αυτή την τάξη. Φτιάξτε φύλλο εργασίας από τα δεξιά.</span>';
+  box.querySelectorAll('[data-paper]').forEach((b) => (b.onclick = () => { const p = mine[+b.dataset.paper]; openDoc(async () => p[b.dataset.kind]); }));
 }
 async function openDoc(load) {
   const w = window.open('', '_blank');
