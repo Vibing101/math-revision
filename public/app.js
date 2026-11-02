@@ -394,11 +394,22 @@ const LV = { lesson: null, i: 0, k: 0, playing: false, token: 0, timer: 0, opene
 try { Object.assign(LV.prefs, JSON.parse(localStorage.getItem('lesson-prefs')) || {}); } catch (e) { /* ignore */ }
 const saveLV = () => { try { localStorage.setItem('lesson-prefs', JSON.stringify(LV.prefs)); } catch (e) { /* ignore */ } };
 const hasTTS = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+const greekVoices = () => (hasTTS ? speechSynthesis.getVoices().filter((v) => /^el/i.test(v.lang)) : []);
+/** Better-sounding voices first: the pupil's saved choice, then enhanced / premium ones. */
+const voiceScore = (v) => (/premium|enhanced|ενισχυμ|βελτιωμ|neural|natural|online/i.test(v.name) ? 2 : 0) + (v.localService ? 0 : 1);
 function pickVoice() {
   if (!hasTTS) return;
-  const vs = speechSynthesis.getVoices();
-  LV.voice = vs.find((v) => v.lang === 'el-GR' && v.localService) || vs.find((v) => /^el/i.test(v.lang)) || null;
+  const vs = greekVoices();
+  LV.voice = vs.find((v) => v.voiceURI === LV.prefs.voice) || vs.slice().sort((a, b) => voiceScore(b) - voiceScore(a))[0] || null;
+  fillVoices();
   if (LV.lesson) noteVoice();
+}
+function fillVoices() {
+  const sel = $('#lv-voice'); if (!sel) return;
+  const vs = greekVoices();
+  sel.innerHTML = vs.map((v) => `<option value="${esc(v.voiceURI)}">${esc(v.name)}</option>`).join('');
+  sel.parentElement.hidden = vs.length < 2;
+  if (LV.voice) sel.value = LV.voice.voiceURI;
 }
 if (hasTTS) { pickVoice(); speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', pickVoice); }
 const sentences = (t) => (t.match(/[^.!;?]+[.!;?]*/g) || [t]).map((x) => x.trim()).filter(Boolean);
@@ -422,6 +433,7 @@ function lvDialog() {
   </div>
   <div class="lv-opt">
     <label>Ταχύτητα <select id="lv-rate"><option value="0.75">αργά</option><option value="1">κανονικά</option><option value="1.2">γρήγορα</option></select></label>
+    <label hidden>Φωνή <select id="lv-voice"></select></label>
     <label class="lv-auto"><input type="checkbox" id="lv-auto"> Συνέχεια αυτόματα</label>
   </div>
 </dialog>`);
@@ -435,6 +447,7 @@ function lvDialog() {
   $('#lv-again').onclick = () => { LV.playing = true; lvGo(LV.i); };
   $('#lv-play').onclick = () => { LV.playing = !LV.playing; if (LV.playing) { if (LV.k >= sentences(LV.lesson.steps[LV.i].say).length) LV.k = 0; lvSpeak(); } else lvHalt(); lvButtons(); };
   $('#lv-rate').onchange = (e) => { LV.prefs.rate = +e.target.value; saveLV(); if (LV.playing) lvSpeak(); };
+  $('#lv-voice').onchange = (e) => { LV.prefs.voice = e.target.value; saveLV(); pickVoice(); if (LV.playing) lvSpeak(); };
   $('#lv-auto').onchange = (e) => { LV.prefs.auto = e.target.checked; saveLV(); };
   d.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'SELECT') return;
@@ -466,7 +479,7 @@ async function openLesson(kind, btn) {
     $('#lv-auto').checked = LV.prefs.auto;
     $('#lv-dots').innerHTML = l.steps.map((s, i) => `<button class="lv-dot" data-i="${i}" title="${esc(s.title)}" aria-label="Βήμα ${i + 1}: ${esc(s.title)}">${i + 1}</button>`).join('');
     d.querySelectorAll('.lv-dot').forEach((b) => (b.onclick = () => { LV.playing = true; lvGo(+b.dataset.i); }));
-    noteVoice();
+    pickVoice();
     if (!d.open) d.showModal();
     lvGo(0);
     $('#lv-play').focus();
