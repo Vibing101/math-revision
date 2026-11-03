@@ -49,6 +49,22 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Natural voice (Azure Speech) secrets for the Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY || secrets.AZURE_KEY || secrets.AZURE_TTS_KEY }}
+          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION || vars.AZURE_SPEECH_REGION || 'westeurope' }}
+        run: |
+          if [ -z "$AZURE_SPEECH_KEY" ]; then
+            echo "::warning::No AZURE_SPEECH_KEY secret: the lesson videos use the device voice."
+            exit 0
+          fi
+          umask 077
+          f="$RUNNER_TEMP/azure-secrets.json"
+          node -e 'console.log(JSON.stringify({ AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY.trim(), AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION.trim() }))' > "$f"
+          npx wrangler secret bulk "$f"
+          rm -f "$f"
       - name: Build and deploy the Rust Worker
         uses: cloudflare/wrangler-action@v3
         with:
@@ -61,3 +77,7 @@ jobs:
           curl -fsS https://maths.savvy-des.com/ | grep -q "Επανάληψη Μαθηματικών"
           curl -fsS "https://maths.savvy-des.com/api/question?cat=pow&seed=1" | grep -q '"cat":"pow"'
           test "$(curl -s -o /dev/null -w '%{http_code}' https://maths.savvy-des.com/api/teacher/resources)" = "401"
+          # natural voice: report only (the page falls back to the device voice)
+          echo "categories tts flag: $(curl -fsS https://maths.savvy-des.com/api/categories | grep -o '"tts":[a-z]*')"
+          curl -s -o /tmp/tts.mp3 -w 'tts: HTTP %{http_code} %{content_type} %{size_download} bytes\n' "https://maths.savvy-des.com/api/tts?cat=c-eq2&seed=1&kind=instr&step=0&k=0&v=m"
+          head -c 300 /tmp/tts.mp3 | grep -a error || true
