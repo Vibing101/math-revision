@@ -7,6 +7,19 @@ const app = $('#app');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
+/* Line icons (lucide shapes), one size and stroke everywhere, colour from the text. */
+const ICONS = {
+  star: '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  bulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+  award: '<circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/>',
+  play: '<path d="M6 3l14 9-14 9z"/>',
+  back: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  next: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+};
+const I = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 const newSeed = () => { try { return crypto.getRandomValues(new Uint32Array(1))[0]; } catch (e) { return Math.floor(Math.random() * 4294967295); } };
 
 async function api(path, opts = {}) {
@@ -34,7 +47,7 @@ const GCH = () => CHAPTERS.filter((c) => c.grade === (S.grade || 'a'));
 const gradeCats = () => CATS.filter((c) => GCH().some((ch) => ch.id === c.chapter));
 const chStats = (ch) => chCats(ch).reduce((a, c) => { const s = cs(c.id); return { att: a.att + s.att, ok: a.ok + s.ok }; }, { att: 0, ok: 0 });
 
-const LEVELS = [[0, 'Μαθητευόμενος'], [100, 'Εξερευνητής διαιρετών'], [250, 'Κυνηγός πρώτων'], [450, 'Μάστορας του ΜΚΔ'], [700, 'Μάγος του ΕΚΠ'], [1000, 'Θρύλος της Διαιρετότητας']];
+const LEVELS = [[0, 'Ξεκίνημα'], [100, 'Σε ρυθμό'], [250, 'Σταθερά βήματα'], [450, 'Δυνατός λύτης'], [700, 'Έτοιμος για διαγώνισμα'], [1000, 'Μάστορας']];
 function level() {
   let i = 0; while (i + 1 < LEVELS.length && S.points >= LEVELS[i + 1][0]) i++;
   const nx = LEVELS[i + 1];
@@ -43,12 +56,13 @@ function level() {
 const BADGES = [
   { id: 'first', t: 'Πρώτη σωστή', ok: () => Object.values(S.cats).some((c) => c.ok > 0) },
   { id: 's5', t: 'Σερί 5', ok: () => S.best >= 5 }, { id: 's10', t: 'Σερί 10', ok: () => S.best >= 10 },
-  { id: 'pow', t: 'Κυνηγός εκθετών (5 σωστά)', ok: () => cs('pow').ok >= 5 },
-  { id: 'time', t: 'Άρχοντας του χρόνου (3 σωστά)', ok: () => cs('time').ok >= 3 },
-  { id: 'prime', t: 'Ανιχνευτής πρώτων (5 σωστά)', ok: () => cs('prime').ok >= 5 },
+  { id: 't25', t: '25 σωστές απαντήσεις', ok: () => totalOk() >= 25 },
+  { id: 't100', t: '100 σωστές απαντήσεις', ok: () => totalOk() >= 100 },
+  { id: 'round', t: 'Πρώτο επαναληπτικό', ok: () => S.rounds.length > 0 },
   { id: 'nh', t: '10 σωστά χωρίς βοήθεια', ok: () => S.noHint >= 10 },
   { id: 'all', t: 'Σωστό σε όλες τις κατηγορίες της τάξης', ok: () => gradeCats().length > 0 && gradeCats().every((c) => cs(c.id).ok > 0) },
   { id: 'r9', t: '90% σε επαναληπτικό', ok: () => S.rounds.some((r) => r >= 9) }];
+function totalOk() { return Object.values(S.cats).reduce((a, c) => a + (c.ok || 0), 0); }
 function newBadges() { const got = []; for (const b of BADGES) if (!S.badges.includes(b.id) && b.ok()) { S.badges.push(b.id); got.push(b.t); } return got; }
 
 /* ---------- navigation: #  (chapters) · #ch-<id> · #year · #teacher ---------- */
@@ -64,26 +78,47 @@ function route() {
   renderHome();
 }
 window.addEventListener('hashchange', route);
-const backLabel = () => (location.hash.startsWith('#ch-') ? '← Κεφάλαιο' : location.hash === '#year' ? '← Επανάληψη χρονιάς' : '← Αρχική');
+const backLabel = () => (location.hash.startsWith('#ch-') ? 'Κεφάλαιο' : location.hash === '#year' ? 'Επανάληψη χρονιάς' : 'Αρχική');
+const backBtn = (label, id = 'home') => `<button class="link" id="${id}">${I('back')}${label}</button>`;
 
-function statsChips() { const L = level(); return `<div class="stats"><span class="chip">⭐ <b>${S.points}</b> πόντοι</span><span class="chip">🔥 σερί <b>${S.streak}</b></span><span class="chip">Επίπεδο ${L.i + 1}: <b>${L.name}</b></span></div>`; }
-const pctBar = (st) => `<span class="bar"><i style="width:${st.att ? Math.round(st.ok / st.att * 100) : 0}%"></i></span><span class="d">${st.att ? `${st.ok}/${st.att} σωστά` : 'Δεν ξεκίνησε ακόμα'}</span>`;
+function statsChips() { return `<div class="stats"><span class="stat">${I('star')}<b>${S.points}</b> πόντοι</span><span class="stat">${I('flame')}σερί <b>${S.streak}</b></span></div>`; }
+/* progress only once the pupil has started; an empty bar on every card is noise */
+const pctBar = (st) => (st.att ? `<span class="bar"><i style="width:${Math.round(st.ok / st.att * 100)}%"></i></span><span class="d">${st.ok} από ${st.att} σωστά</span>` : '');
 
 function renderGrade() {
-  app.innerHTML = `<header class="hero"><h1>Επανάληψη Μαθηματικών</h1><p class="muted" style="margin:0">Σε ποια τάξη είσαι; Μπορείς να την αλλάξεις όποτε θέλεις από την αρχική οθόνη.</p></header>
+  app.innerHTML = `<header class="hero"><h1>Μαθηματικά Γυμνασίου</h1><p class="muted" style="margin:0">Σε ποια τάξη είσαι; Μπορείς να την αλλάξεις όποτε θέλεις από την αρχική οθόνη.</p></header>
   <div class="grid">${GRADES.map((g) => { const n = CHAPTERS.filter((c) => c.grade === g.id).length; return `<button class="cat chap grade" data-grade="${g.id}"><span class="t">${g.name}</span><span class="d">${n} κεφάλαια από το βιβλίο του Υπουργείου</span></button>`; }).join('')}</div>`;
   app.querySelectorAll('[data-grade]').forEach((b) => (b.onclick = () => { S.grade = b.dataset.grade; save(); go('#'); }));
 }
 
+/** The one thing to do next: the last practised section, or the first chapter. */
+function nextUp() {
+  const r = S.last && S.last.round;
+  if (r && r.cats.length && r.cats.every((id) => gradeCats().some((c) => c.id === id))) {
+    return { kicker: 'Συνέχισε από εκεί που σταμάτησες', title: r.title, sub: `Νέο επαναληπτικό με ${r.n} ερωτήσεις`, btn: 'Συνέχισε', go: () => startRound(r.cats, r.n, r.title) };
+  }
+  const last = typeof S.last === 'string' && gradeCats().find((c) => c.id === S.last);
+  if (last) {
+    const ch = CHAPTERS.find((c) => c.id === last.chapter), st = cs(last.id);
+    return { kicker: 'Συνέχισε από εκεί που σταμάτησες', title: last.title, sub: `Κεφάλαιο ${ch.number}: ${ch.title}${st.att ? ` · ${st.ok} από ${st.att} σωστά` : ''}`, btn: 'Συνέχισε', go: () => { round = null; start(last.id); } };
+  }
+  const ch = GCH()[0];
+  return { kicker: 'Ξεκίνα από εδώ', title: ch.title, sub: `Κεφάλαιο ${ch.number} · 10 ερωτήσεις από όλες τις ενότητες`, btn: 'Ξεκίνα', go: () => go('#ch-' + ch.id) };
+}
+
 function renderHome() {
-  const L = level();
-  app.innerHTML = `<header class="hero"><h1>Επανάληψη Μαθηματικών</h1><div class="row" role="group" aria-label="Τάξη">${GRADES.map((g) => `<button class="tog gradechip" data-g="${g.id}" aria-pressed="${g.id === S.grade}">${g.name}</button>`).join('')}</div><p class="muted" style="margin:0">Διάλεξε κεφάλαιο για το επαναληπτικό του ή κάνε επανάληψη για το τέλος της χρονιάς.</p></header>
-  <section class="card level">${statsChips()}<div class="bar" aria-hidden="true"><i style="width:${L.pct}%"></i></div><span class="muted" style="font-size:.88rem">${L.next ? `${L.next} πόντοι για το επόμενο επίπεδο` : 'Έφτασες στο ανώτερο επίπεδο!'}</span></section>
+  const L = level(), up = nextUp();
+  const earned = BADGES.filter((b) => S.badges.includes(b.id));
+  app.innerHTML = `<header class="hero"><h1>Μαθηματικά Γυμνασίου</h1><div class="seg" role="group" aria-label="Τάξη">${GRADES.map((g) => `<button class="tog gradechip" data-g="${g.id}" aria-pressed="${g.id === S.grade}">${g.name}</button>`).join('')}</div></header>
+  <section class="card cont"><span class="muted">${up.kicker}</span><h2 class="cont-t"><span class="mark">${esc(up.title)}</span></h2><span class="muted">${esc(up.sub)}</span>
+   <div class="row cont-row"><button class="btn big-btn" id="go-next">${up.btn}${I('next')}</button>${statsChips()}</div>
+   <div class="lvl"><span class="muted">Επίπεδο ${L.i + 1}: <b class="fg">${L.name}</b>${L.next ? ` · ${L.next} πόντοι για το επόμενο` : ''}</span><div class="bar" aria-hidden="true"><i style="width:${L.pct}%"></i></div></div></section>
   <h2>Κεφάλαια</h2>
   <div class="grid">${GCH().map((ch) => `<button class="cat chap" data-ch="${ch.id}"><span class="sec">Κεφάλαιο ${ch.number}</span><span class="t">${esc(ch.title)}</span><span class="d">${esc(ch.desc)}</span>${pctBar(chStats(ch.id))}</button>`).join('')}
-   <button class="cat year" id="go-year"><span class="tag">Τέλος χρονιάς</span><span class="t">Επανάληψη χρονιάς</span><span class="d">Διάλεξε ποια κεφάλαια εξετάζονται και κάνε ένα μικτό επαναληπτικό από όλα μαζί.</span></button></div>
-  <section class="card"><h2 style="margin-bottom:8px">Παράσημα</h2><div class="badges">${BADGES.map((b) => `<span class="badge${S.badges.includes(b.id) ? '' : ' off'}">${S.badges.includes(b.id) ? '🏅 ' : ''}${b.t}</span>`).join('')}</div></section>
-  <div class="row"><button class="btn ghost" id="go-teacher">Για τον εκπαιδευτικό</button></div>`;
+   <button class="cat chap" id="go-year"><span class="sec">${I('cal')}Τέλος χρονιάς</span><span class="t">Επανάληψη χρονιάς</span><span class="d">Διάλεξε ποια κεφάλαια εξετάζονται και κάνε ένα μικτό επαναληπτικό.</span></button></div>
+  <details class="card bdg"><summary>${I('award')}<span>Παράσημα: <b>${earned.length} από ${BADGES.length}</b></span></summary><ul class="blist">${BADGES.map((b) => `<li class="${S.badges.includes(b.id) ? 'got' : ''}">${S.badges.includes(b.id) ? I('award') : '<span class="ic"></span>'}${b.t}</li>`).join('')}</ul></details>
+  <div class="row"><button class="link" id="go-teacher">${I('lock')}Για τον εκπαιδευτικό</button></div>`;
+  $('#go-next').onclick = up.go;
   app.querySelectorAll('[data-ch]').forEach((b) => (b.onclick = () => go('#ch-' + b.dataset.ch)));
   app.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => { S.grade = b.dataset.g; save(); renderHome(); }));
   $('#go-year').onclick = () => go('#year');
@@ -92,12 +127,12 @@ function renderHome() {
 
 function renderChapter(id) {
   const ch = CHAPTERS.find((c) => c.id === id), cats = chCats(id);
-  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Κεφάλαια</button>${statsChips()}</div>
-  <header class="hero"><span class="muted">Κεφάλαιο ${ch.number}</span><h1>${esc(ch.title)}</h1><p class="muted" style="margin:0">${ch.sections.map(esc).join(' · ')}</p></header>
-  <section class="card level"><h2>Επαναληπτικό κεφαλαίου</h2><p style="margin:0">10 ερωτήσεις από όλες τις ενότητες του κεφαλαίου, με περισσότερες από εκεί που κάνεις λάθη.</p>
-   <div class="row"><button class="btn sun" id="go-round">Ξεκίνα το επαναληπτικό</button></div></section>
+  app.innerHTML = `<div class="top">${backBtn('Κεφάλαια')}${statsChips()}</div>
+  <header class="hero"><span class="muted">Κεφάλαιο ${ch.number}</span><h1>${esc(ch.title)}</h1><ul class="secs">${ch.sections.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></header>
+  <section class="card cont"><h2>Επαναληπτικό κεφαλαίου</h2><p style="margin:0">10 ερωτήσεις από όλες τις ενότητες, με περισσότερες από εκεί που κάνεις λάθη.</p>
+   <div class="row"><button class="btn big-btn" id="go-round">Ξεκίνα το επαναληπτικό${I('next')}</button></div></section>
   <h2>Ή εξάσκηση ανά ενότητα</h2>
-  <div class="grid">${cats.map((c) => `<button class="cat${c.focus ? ' focus' : ''}" data-cat="${c.id}">${c.focus ? '<span class="tag">Να το προσέξεις</span>' : ''}<span class="sec">${esc(c.section)}</span><span class="t">${esc(c.title)}</span><span class="d">${esc(c.desc)}</span>${pctBar(cs(c.id))}</button>`).join('')}</div>`;
+  <div class="grid">${cats.map((c) => `<button class="cat${c.focus ? ' focus' : ''}" data-cat="${c.id}">${c.focus ? '<span class="tag">Θέλει προσοχή</span>' : ''}<span class="sec">${esc(c.section)}</span><span class="t">${esc(c.title)}</span><span class="d">${esc(c.desc)}</span>${pctBar(cs(c.id))}</button>`).join('')}</div>`;
   $('#home').onclick = () => go('#');
   app.querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { round = null; start(b.dataset.cat); }));
   $('#go-round').onclick = () => startRound(cats.map((c) => c.id), 10, ch.title);
@@ -107,15 +142,15 @@ function renderYear(msg) {
   const saved = (S.years || {})[S.grade] || (S.grade === 'a' && S.year) || null;
   const sel = (saved && saved.chapters) || GCH().map((c) => c.id);
   const n = (saved && saved.n) || 20;
-  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Κεφάλαια</button>${statsChips()}</div>
+  app.innerHTML = `<div class="top">${backBtn('Κεφάλαια')}${statsChips()}</div>
   <header class="hero"><h1>Επανάληψη χρονιάς</h1><span class="muted">${gradeName()}</span><p class="muted" style="margin:0">Διάλεξε τα κεφάλαια που εξετάζονται στις εξετάσεις τέλους χρονιάς. Η επιλογή σου αποθηκεύεται.</p></header>
   <form class="card" id="yf" style="display:flex;flex-direction:column;gap:12px">
-   <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px"><legend style="font-weight:700;margin-bottom:6px">Κεφάλαια</legend>
+   <fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px"><legend style="font-weight:700;margin-bottom:8px">Κεφάλαια</legend>
    ${GCH().map((ch) => { const st = chStats(ch.id); return `<label class="chk"><input type="checkbox" name="ch" value="${ch.id}" id="y-${ch.id}"${sel.includes(ch.id) ? ' checked' : ''}><span><b>Κεφάλαιο ${ch.number}: ${esc(ch.title)}</b><br><span class="muted" style="font-size:.88rem">${esc(ch.desc)}${st.att ? ` · ${Math.round(st.ok / st.att * 100)}% σωστά μέχρι τώρα` : ''}</span></span></label>`; }).join('')}
    </fieldset>
    <div class="row"><label for="y-n" style="font-weight:700">Ερωτήσεις</label><select id="y-n">${[10, 20, 30, 40].map((x) => `<option value="${x}"${x === n ? ' selected' : ''}>${x}</option>`).join('')}</select></div>
    <span class="err" role="alert">${msg ? esc(msg) : ''}</span>
-   <div class="row"><button class="btn sun" type="submit">Ξεκίνα την επανάληψη</button></div>
+   <div class="row"><button class="btn big-btn" type="submit">Ξεκίνα την επανάληψη${I('next')}</button></div>
    <span class="muted" style="font-size:.85rem">Οι ερωτήσεις μοιράζονται σε όλα τα κεφάλαια που διάλεξες, με περισσότερες από τις ενότητες όπου κάνεις λάθη. Στο τέλος βλέπεις αποτέλεσμα ανά κεφάλαιο.</span>
   </form>`;
   $('#home').onclick = () => go('#');
@@ -130,7 +165,7 @@ function renderYear(msg) {
   });
 }
 
-function startRound(cats, n, title) { round = { n, i: 0, ok: 0, cats, title, by: {} }; start(null); }
+function startRound(cats, n, title) { round = { n, i: 0, ok: 0, cats, title, by: {} }; S.last = { round: { cats, n, title } }; save(); start(null); }
 function weightedCat(ids) {
   const prior = { pow: 0.3, time: 0.3, num: 0.4 };
   const list = CATS.filter((c) => ids.includes(c.id));
@@ -147,7 +182,8 @@ function weightedCat(ids) {
 /* ---------- question ---------- */
 async function start(cat) {
   const c = cat || weightedCat(round.cats);
-  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">${backLabel()}</button>${statsChips()}</div><section class="card"><p class="loading">Φόρτωση ερώτησης…</p></section>`;
+  app.innerHTML = `<div class="top">${backBtn(backLabel())}${statsChips()}</div><section class="card"><p class="loading">Φόρτωση ερώτησης…</p></section>`;
+  if (!round) { S.last = c; save(); }
   $('#home').onclick = goHome;
   try {
     Q = await api(`/api/question?cat=${encodeURIComponent(c)}&seed=${newSeed()}`);
@@ -182,13 +218,15 @@ function renderQ() {
   const cat = CATS.find((c) => c.id === Q.cat);
   let pi = 0;
   const chap = cat && CHAPTERS.find((c) => c.id === cat.chapter);
-  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">${backLabel()}</button>${statsChips()}</div>
-  <section class="card"><div class="row" style="justify-content:space-between"><span class="tag">${round && chap && CHAPTERS.length > 1 ? esc(chap.title) + ' · ' : ''}${esc(cat ? cat.title : '')}</span><span class="muted" style="font-size:.88rem">${round ? `${esc(round.title)} · ερώτηση ${round.i + 1} από ${round.n}` : ''}</span></div>
-  <div class="qtext" style="margin-top:10px">${Q.prompt}</div>
-  <div class="row lvbtns"><button class="btn ghost sm" data-lesson="instr">▶ Βίντεο: Οδηγίες</button>${METHOD_CATS.includes(Q.cat) ? '<button class="btn ghost sm" data-lesson="method">▶ Βίντεο: Μέθοδος</button>' : ''}</div>
+  app.innerHTML = `<div class="top">${backBtn(backLabel())}${statsChips()}</div>
+  <section class="card q">${round ? `<div class="rprog"><span class="muted">${esc(round.title)}</span><span class="muted">Ερώτηση <b class="fg">${round.i + 1}</b> από ${round.n}</span><div class="bar" aria-hidden="true"><i style="width:${Math.round((round.i / round.n) * 100)}%"></i></div></div>` : ''}
+  <span class="sec">${round && chap ? esc(chap.title) + ' · ' : ''}${esc(cat ? cat.title : '')}</span>
+  <div class="qtext">${Q.prompt}</div>
+  <div class="row lvbtns"><span class="muted">Βίντεο</span><button class="btn ghost sm" data-lesson="instr">${I('play')}Οδηγίες</button>${METHOD_CATS.includes(Q.cat) ? `<button class="btn ghost sm" data-lesson="method">${I('play')}Μέθοδος</button>` : ''}</div>
   ${Q.groups.map((g) => `<div class="group">${g.label ? `<div class="gl">${g.label}</div>` : ''}${g.parts.map((p) => { const id = `p${qn}_${pi++}`; p.id = id; return `<div class="part" id="${id}-w">${partHTML(p, id)}</div>`; }).join('')}</div>`).join('')}
-  <div class="row" style="margin-top:16px"><button class="btn" id="check">Έλεγχος</button><button class="btn ghost" id="hint">💡 Βοήθεια (0/4)</button><button class="btn sun" id="next" hidden>${round && round.i + 1 >= round.n ? 'Τέλος γύρου' : 'Επόμενη ➜'}</button></div>
-  <div class="hints" id="hints" style="margin-top:12px"></div><div id="fb" style="margin-top:12px"></div></section>`;
+  <div class="row actions"><button class="btn big-btn" id="check">Έλεγχος</button><button class="btn ghost" id="hint">${I('bulb')}Βοήθεια <span class="cnt">0/4</span></button><button class="btn big-btn" id="next" hidden>${round && round.i + 1 >= round.n ? 'Τέλος γύρου' : 'Επόμενη'}${I('next')}</button></div>
+  <div class="hints" id="hints"></div><div id="fb"></div></section>`;
+  colourMath();
   $('#home').onclick = goHome;
   app.querySelectorAll('[data-yn]').forEach((b) => (b.onclick = () => b.parentElement.querySelectorAll('[data-yn]').forEach((x) => x.setAttribute('aria-pressed', x === b))));
   app.querySelectorAll('[data-st]').forEach((b) => (b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true')));
@@ -199,6 +237,20 @@ function renderQ() {
   app.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done ? $('#next').click() : check(); } }));
   const f = app.querySelector('input,select'); if (f && matchMedia('(pointer:fine)').matches) f.focus();
 }
+/* Colour the main expression like the method videos: x² blue, x terms green, numbers orange. */
+function colourMath() {
+  // A single letter (or <i>letter</i>) is a variable; longer words are left alone.
+  const re = /(\d*)(<i>[^<]{1,3}<\/i>|[A-Za-zΑ-Ωα-ωά-ώ]+)([²³⁴⁶]?)|(<[^>]+>)|(\d+(?:,\d+)?)/g;
+  app.querySelectorAll('.qtext .big').forEach((el) => {
+    if (el.querySelector('svg, table, input')) return;
+    el.innerHTML = el.innerHTML.replace(re, (m, k, v, e, tag, n) => {
+      if (tag) return m;
+      if (n) return `<span class="m0">${n}</span>`;
+      if (!v.startsWith('<i>') && (v.length > 1 || v !== v.toLowerCase())) return m;
+      return `<span class="${e ? 'm2' : 'm1'}">${k}${v}${e}</span>`;
+    });
+  });
+}
 async function showHint() {
   if (hintsShown >= 4 || done || busy) return;
   const b = $('#hint'); b.disabled = true;
@@ -207,7 +259,7 @@ async function showHint() {
     $('#hints').insertAdjacentHTML('beforeend', `<div class="hint"><b>Βοήθεια ${hintsShown + 1}:</b> ${r.hint}</div>`);
     hintsShown++;
   } catch (e) { $('#fb').innerHTML = netError(e); }
-  b.textContent = `💡 Βοήθεια (${hintsShown}/4)`; b.disabled = hintsShown >= 4;
+  b.querySelector('.cnt').textContent = `${hintsShown}/4`; b.disabled = hintsShown >= 4;
 }
 function readVal(p) {
   const id = p.id;
@@ -234,11 +286,11 @@ async function check() {
   busy = false; $('#check').disabled = false;
   if (r.blank.some(Boolean)) {
     S.tags.blank = (S.tags.blank || 0) + 1; save();
-    ps.forEach((p, i) => { const w = $('#' + p.id + '-w'); w.classList.remove('ok'); w.classList.toggle('bad', r.blank[i]); });
-    fb.innerHTML = '<div class="fb bad"><span class="h">Απάντησε σε όλα τα ερωτήματα πριν τον έλεγχο.</span><span>Στο διαγώνισμα κάθε κενό ερώτημα χάνει μονάδες. Τα κουτάκια με κόκκινο περίγραμμα είναι κενά ή δεν είναι αριθμοί.</span></div>';
+    ps.forEach((p, i) => { const w = $('#' + p.id + '-w'); w.classList.remove('ok', 'bad'); w.classList.toggle('miss', r.blank[i]); });
+    fb.innerHTML = '<div class="fb info"><span>Συμπλήρωσε πρώτα τα κουτάκια με το κίτρινο περίγραμμα. Στο διαγώνισμα, ένα κενό χάνει μονάδες.</span></div>';
     return;
   }
-  ps.forEach((p, i) => { const w = $('#' + p.id + '-w'); w.classList.toggle('ok', r.ok[i]); w.classList.toggle('bad', !r.ok[i]); });
+  ps.forEach((p, i) => { const w = $('#' + p.id + '-w'); w.classList.remove('miss'); w.classList.toggle('ok', r.ok[i]); w.classList.toggle('bad', !r.ok[i]); });
   tries++;
   const c = cs(Q.cat);
   if (r.correct) {
@@ -248,7 +300,7 @@ async function check() {
     const bonus = S.streak % 3 === 0 ? 5 : 0;
     S.points += pts + bonus; if (round) round.ok++; roundRecord(true);
     const nb = newBadges(); save();
-    fb.innerHTML = `<div class="fb ok"><span class="h">${pick(['Σωστό!', 'Μπράβο!', 'Τέλεια!', 'Εξαιρετικά!'])} +${pts} πόντοι${bonus ? ` · μπόνους σερί +${bonus}` : ''}</span>${nb.map((b) => `<span>🏅 Νέο παράσημο: <b>${b}</b></span>`).join('')}<div class="sol">${r.solution}</div></div>`;
+    fb.innerHTML = `<div class="fb ok"><span class="h">${pick(['Σωστό!', 'Μπράβο!', 'Τέλεια!', 'Εξαιρετικά!'])} +${pts} πόντοι${bonus ? ` · μπόνους σερί +${bonus}` : ''}</span>${nb.map((b) => `<span class="nb">${I('award')}Νέο παράσημο: <b>${b}</b></span>`).join('')}<div class="sol">${r.solution}</div></div>`;
     celebrate(pts + bonus); finishUI();
   } else {
     for (const d of r.diag) if (d.tag) S.tags[d.tag] = (S.tags[d.tag] || 0) + 1;
@@ -284,9 +336,9 @@ function endRound() {
   const pct = r.ok / r.n;
   const msg = pct >= 0.9 ? 'Είσαι έτοιμος για το διαγώνισμα!' : pct >= 0.7 ? 'Πολύ καλά! Λίγη εξάσκηση ακόμα στα δύσκολα.' : pct >= 0.5 ? 'Καλή προσπάθεια. Ξαναδοκίμασε έναν γύρο.' : 'Ας κάνουμε εξάσκηση ενότητα-ενότητα, με τη βοήθεια.';
   const rows = Object.entries(r.by).map(([id, b]) => { const ch = CHAPTERS.find((c) => c.id === id); return `<tr><td>${esc(ch ? ch.title : id)}</td><td>${b.ok} / ${b.n}</td></tr>`; }).join('');
-  app.innerHTML = `<section class="card" style="text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center"><span class="muted">${esc(r.title)}</span><h1>Τέλος επαναληπτικού</h1><div class="big" style="font-size:2.6rem">${r.ok} / ${r.n}</div><p style="margin:0">${msg}</p>${nb.map((b) => `<span>🏅 Νέο παράσημο: <b>${b}</b></span>`).join('')}
+  app.innerHTML = `<section class="card" style="text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center"><span class="muted">${esc(r.title)}</span><h1>Τέλος επαναληπτικού</h1><div class="score"><span class="mark">${r.ok} / ${r.n}</span></div><p style="margin:0">${msg}</p>${nb.map((b) => `<span class="nb">${I('award')}Νέο παράσημο: <b>${b}</b></span>`).join('')}
   ${Object.keys(r.by).length > 1 ? `<div class="tbl" style="width:100%;max-width:420px"><table class="st"><tr><th>Κεφάλαιο</th><th>Σωστά</th></tr>${rows}</table></div>` : ''}${statsChips()}
-  <div class="row" style="justify-content:center"><button class="btn sun" id="again">Νέο επαναληπτικό</button><button class="btn ghost" id="home">Πίσω</button></div></section>`;
+  <div class="row" style="justify-content:center"><button class="btn big-btn" id="again">Νέο επαναληπτικό</button><button class="btn ghost" id="home">Πίσω</button></div></section>`;
   $('#again').onclick = () => startRound(r.cats, r.n, r.title); $('#home').onclick = route;
 }
 
@@ -303,7 +355,7 @@ function renderTeacher(err) {
   renderTeacherPanel();
 }
 function renderPin(err) {
-  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Αρχική</button></div><h1>Για τον εκπαιδευτικό</h1>
+  app.innerHTML = `<div class="top">${backBtn('Αρχική')}</div><h1>Για τον εκπαιδευτικό</h1>
   <section class="card"><form class="pin" id="pinf" autocomplete="off"><label for="pin">Γράψτε το PIN για να δείτε την πρόοδο, τις λύσεις και τα φύλλα εργασίας.</label>
   <input id="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="one-time-code" aria-describedby="pinerr">
   <span class="err" id="pinerr" role="alert">${err ? esc(err) : ''}</span>
@@ -325,7 +377,7 @@ function renderPin(err) {
 let confirmReset = false;
 function renderTeacherPanel() {
   const tags = Object.entries(S.tags).sort((a, b) => b[1] - a[1]);
-  app.innerHTML = `<div class="top"><button class="btn ghost" id="home">← Αρχική</button><button class="btn ghost" id="logout">Αποσύνδεση</button></div><h1>Για τον εκπαιδευτικό</h1><p class="muted" style="margin:0">Τάξη: <b>${gradeName()}</b>. Η τάξη αλλάζει από την αρχική οθόνη.</p>
+  app.innerHTML = `<div class="top">${backBtn('Αρχική')}<button class="btn ghost" id="logout">Αποσύνδεση</button></div><h1>Για τον εκπαιδευτικό</h1><p class="muted" style="margin:0">Τάξη: <b>${gradeName()}</b>. Η τάξη αλλάζει από την αρχική οθόνη.</p>
   <div class="tools">
    <section class="card"><h2>Διαγωνίσματα για εκτύπωση</h2><p class="muted" style="margin:0">Έτοιμα διαγωνίσματα της ${gradeName()} με τις λύσεις τους.</p><div id="papers" class="papers"><span class="muted">Φόρτωση…</span></div></section>
    <section class="card"><h2>Φύλλο εργασίας</h2><p class="muted" style="margin:0">Καινούργιες ασκήσεις με απαντήσεις στο τέλος.</p>
@@ -339,7 +391,7 @@ function renderTeacherPanel() {
   ${GCH().map((ch) => { const t = chStats(ch.id); return `<tr><th colspan="4">Κεφάλαιο ${ch.number}: ${esc(ch.title)}</th><th>${t.att ? Math.round(t.ok / t.att * 100) + '%' : '–'}</th></tr>` + chCats(ch.id).map((c) => { const s = cs(c.id); return `<tr><td>${esc(c.title)}</td><td>${s.att}</td><td>${s.ok}</td><td>${s.first}</td><td>${s.att ? Math.round(s.ok / s.att * 100) + '%' : '–'}</td></tr>`; }).join(''); }).join('')}</table></div></section>
   <section class="card"><h2 style="margin-bottom:8px">Συχνά λάθη</h2>${tags.length ? `<div class="tbl"><table class="st"><tr><th>Λάθος</th><th>Φορές</th></tr>${tags.map(([t, n]) => `<tr><td>${esc(TAGS[t] || t)}</td><td>${n}</td></tr>`).join('')}</table></div>` : '<p class="muted" style="margin:0">Δεν έχουν καταγραφεί λάθη ακόμα.</p>'}</section>
   <section class="card"><h2 style="margin-bottom:8px">Σύνολο</h2><p style="margin:0">Πόντοι: ${S.points} · Καλύτερο σερί: ${S.best} · Επαναληπτικά: ${S.rounds.length ? S.rounds.join(', ') + ' (βαθμός στα 10)' : 'κανένα'}</p>
-  <div style="margin-top:10px">${confirmReset ? '<div class="confirm"><span>Να σβηστεί όλη η πρόοδος;</span><button class="btn" id="yes" style="background:var(--bad)">Ναι, σβήσ\' την</button><button class="btn ghost" id="no">Άκυρο</button></div>' : '<button class="btn ghost" id="reset">Μηδενισμός προόδου</button>'}</div></section>`;
+  <div style="margin-top:12px">${confirmReset ? '<div class="confirm"><span>Να σβηστεί όλη η πρόοδος;</span><button class="btn" id="yes" style="background:var(--bad)">Ναι, σβήσ\' την</button><button class="btn ghost" id="no">Άκυρο</button></div>' : '<button class="btn ghost" id="reset">Μηδενισμός προόδου</button>'}</div></section>`;
   $('#home').onclick = () => { confirmReset = false; go('#'); };
   $('#logout').onclick = () => { memToken = null; setToken(null); go('#'); };
   const r = $('#reset'); if (r) r.onclick = () => { confirmReset = true; renderTeacherPanel(); };
@@ -481,7 +533,7 @@ async function openLesson(kind, btn) {
     const l = await api(`/api/lesson?cat=${Q.cat}&seed=${Q.seed}&kind=${kind}`);
     const d = lvDialog();
     LV.lesson = l; LV.kind = kind; LV.opener = btn; LV.playing = true;
-    $('#lv-t').textContent = '🎬 ' + l.title;
+    $('#lv-t').textContent = l.title;
     $('#lv-rate').value = String(LV.prefs.rate); if (!$('#lv-rate').value) $('#lv-rate').value = '1';
     $('#lv-auto').checked = LV.prefs.auto;
     $('#lv-dots').innerHTML = l.steps.map((s, i) => `<button class="lv-dot" data-i="${i}" title="${esc(s.title)}" aria-label="Βήμα ${i + 1}: ${esc(s.title)}">${i + 1}</button>`).join('');

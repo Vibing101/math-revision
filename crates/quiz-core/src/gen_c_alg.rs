@@ -1002,9 +1002,9 @@ pub fn c_factor2(r: &mut Rng) -> Question {
             };
             (
                 format!("{}x³ − {} + {}x − {}", if k == 1 { String::new() } else { k.to_string() }, k * c.pow(3), coef(d), d * c),
-                format!("(x − {c})({}x² + {}x + {})", if k == 1 { String::new() } else { k.to_string() }, k * c, k * c * c + d),
-                vec![format!("(x − {c})({}x² + {}x + {})", if k == 1 { String::new() } else { k.to_string() }, k * c, k * c * c), format!("(x + {c})({}x² − {}x + {})", if k == 1 { String::new() } else { k.to_string() }, k * c, k * c * c + d), format!("(x − {c})²({}x + {d})", if k == 1 { String::new() } else { k.to_string() })],
-                format!("Ομαδοποίηση: {k}(x³ − {}) + {d}(x − {c}) = {k}(x − {c})(x² + {c}x + {}) + {d}(x − {c}) = (x − {c})[{k}(x² + {c}x + {}) + {d}]", c.pow(3), c * c, c * c),
+                format!("(x − {c})({}x² + {}x + {})", coef(k), coef(k * c), k * c * c + d),
+                vec![format!("(x − {c})({}x² + {}x + {})", coef(k), coef(k * c), k * c * c), format!("(x + {c})({}x² − {}x + {})", coef(k), coef(k * c), k * c * c + d), format!("(x − {c})²({}x + {d})", if k == 1 { String::new() } else { k.to_string() })],
+                format!("Ομαδοποίηση: {k}(x³ − {}) + {d}(x − {c}) = {k}(x − {c})(x² + {}x + {}) + {d}(x − {c}) = (x − {c})[{k}(x² + {}x + {}) + {d}]", c.pow(3), coef(c), c * c, coef(c), c * c),
             )
         }
         2 => {
@@ -1015,9 +1015,9 @@ pub fn c_factor2(r: &mut Rng) -> Question {
                 return c_factor2(r);
             }
             let bterm = if bb < 0 {
-                format!(" − {}x(x − {a})", -bb)
+                format!(" − {}x(x − {a})", coef(-bb))
             } else {
-                format!(" + {bb}x(x − {a})")
+                format!(" + {}x(x − {a})", coef(bb))
             };
             let cterm = if cc < 0 {
                 format!(" − {}({a} − x)", -cc)
