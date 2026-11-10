@@ -74,11 +74,12 @@ function route() {
   if (!S.grade || h === '#grade') return renderGrade();
   if (h === '#year') return renderYear();
   if (h === '#teacher') return renderTeacher();
+  if (h.startsWith('#th-') && CHAPTERS.some((c) => '#th-' + c.id === h)) return renderTheory(h.slice(4));
   if (h.startsWith('#ch-') && CHAPTERS.some((c) => '#ch-' + c.id === h)) return renderChapter(h.slice(4));
   renderHome();
 }
 window.addEventListener('hashchange', route);
-const backLabel = () => (location.hash.startsWith('#ch-') ? 'Κεφάλαιο' : location.hash === '#year' ? 'Επανάληψη χρονιάς' : 'Αρχική');
+const backLabel = () => (location.hash.startsWith('#ch-') || location.hash.startsWith('#th-') ? 'Κεφάλαιο' : location.hash === '#year' ? 'Επανάληψη χρονιάς' : 'Αρχική');
 const backBtn = (label, id = 'home') => `<button class="link" id="${id}">${I('back')}${label}</button>`;
 
 function statsChips() { return `<div class="stats"><span class="stat">${I('star')}<b>${S.points}</b> πόντοι</span><span class="stat">${I('flame')}σερί <b>${S.streak}</b></span></div>`; }
@@ -129,6 +130,8 @@ function renderChapter(id) {
   const ch = CHAPTERS.find((c) => c.id === id), cats = chCats(id);
   app.innerHTML = `<div class="top">${backBtn('Κεφάλαια')}${statsChips()}</div>
   <header class="hero"><span class="muted">Κεφάλαιο ${ch.number}</span><h1>${esc(ch.title)}</h1><ul class="secs">${ch.sections.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></header>
+  <section class="card cont"><h2>Θεωρία και παραδείγματα</h2><p style="margin:0">Οι βασικοί ορισμοί και κανόνες του κεφαλαίου, σε μικρές κάρτες με λυμένα παραδείγματα.</p>
+   <div class="row"><button class="btn ghost" id="go-theory">${I('play')}Διάβασε τη θεωρία</button></div></section>
   <section class="card cont"><h2>Επαναληπτικό κεφαλαίου</h2><p style="margin:0">10 ερωτήσεις από όλες τις ενότητες, με περισσότερες από εκεί που κάνεις λάθη.</p>
    <div class="row"><button class="btn big-btn" id="go-round">Ξεκίνα το επαναληπτικό${I('next')}</button></div></section>
   <h2>Ή εξάσκηση ανά ενότητα</h2>
@@ -136,6 +139,39 @@ function renderChapter(id) {
   $('#home').onclick = () => go('#');
   app.querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { round = null; start(b.dataset.cat); }));
   $('#go-round').onclick = () => startRound(cats.map((c) => c.id), 10, ch.title);
+  $('#go-theory').onclick = () => go('#th-' + id);
+}
+
+/* ---------- theory: public/theory/<chapter>.json, short cards with worked examples ---------- */
+const THEORY = {};
+const CARD_LABEL = { goal: 'Τι θα μάθουμε', def: 'Ορισμός', rule: 'Κανόνας', note: 'Να θυμάσαι', warn: 'Πρόσεξε' };
+function theoryCard(c) {
+  if (c.type === 'example') {
+    const steps = (c.steps || []).map((x, i) => `<li${i ? ' hidden' : ''}>${x}</li>`).join('');
+    return `<article class="tcard ex"><span class="tlabel">Παράδειγμα</span><div class="tbody">${c.html}</div>
+      ${steps ? `<ol class="tsteps">${steps}</ol><button class="btn ghost sm tnext">Δείξε το επόμενο βήμα</button>` : ''}</article>`;
+  }
+  return `<article class="tcard ${c.type}"><span class="tlabel">${CARD_LABEL[c.type] || ''}${c.title ? ': ' + esc(c.title) : ''}</span><div class="tbody">${c.html}</div></article>`;
+}
+async function renderTheory(id) {
+  const ch = CHAPTERS.find((c) => c.id === id);
+  app.innerHTML = `<div class="top">${backBtn('Κεφάλαιο')}${statsChips()}</div><header class="hero"><span class="muted">Κεφάλαιο ${ch.number} · Θεωρία</span><h1>${esc(ch.title)}</h1></header><p class="loading">Φόρτωση…</p>`;
+  $('#home').onclick = () => go('#ch-' + id);
+  let th = THEORY[id];
+  if (!th) {
+    try { const r = await fetch(`/theory/${id}.json`); if (!r.ok) throw new Error(); th = THEORY[id] = await r.json(); }
+    catch (e) { app.querySelector('.loading').outerHTML = '<div class="card"><p style="margin:0">Η θεωρία αυτού του κεφαλαίου θα προστεθεί σύντομα.</p></div>'; return; }
+  }
+  app.querySelector('.loading').outerHTML = `<nav class="toc card">${th.sections.map((s, i) => `<a href="#th-${id}" data-s="${i}">${esc(s.title)}</a>`).join('')}</nav>` +
+    th.sections.map((s, i) => `<section class="tsec" id="ts-${i}"><h2>${esc(s.title)}</h2>${s.cards.map(theoryCard).join('')}
+      ${s.practice ? `<div class="row"><button class="btn" data-cat="${s.practice}">${I('next')}Δοκίμασε ασκήσεις</button></div>` : ''}</section>`).join('');
+  app.querySelectorAll('.toc a').forEach((a) => (a.onclick = (e) => { e.preventDefault(); $('#ts-' + a.dataset.s).scrollIntoView({ behavior: 'smooth' }); }));
+  app.querySelectorAll('.tnext').forEach((b) => (b.onclick = () => {
+    const li = b.previousElementSibling.querySelector('li[hidden]');
+    if (li) li.hidden = false;
+    if (!b.previousElementSibling.querySelector('li[hidden]')) b.remove();
+  }));
+  app.querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { round = null; start(b.dataset.cat); }));
 }
 
 function renderYear(msg) {

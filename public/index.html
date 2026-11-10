@@ -128,6 +128,17 @@ table.st th,table.st td{border-bottom:1px solid var(--line);padding:6px 8px;text
 .chk:has(input:checked){border-color:var(--accent)}
 .chk input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
 table.st th[colspan]{background:var(--chip)}
+/* theory cards */
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.toc a{background:var(--chip);border-radius:999px;padding:6px 14px;color:var(--fg);text-decoration:none;font-size:.92rem}
+.tsec{margin:28px 0}.tsec>h2{margin-bottom:12px}
+.tcard{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:14px;padding:14px 18px;margin:12px 0;max-width:46rem}
+.tcard .tlabel{display:block;font-size:.8rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.tcard .tbody p{margin:.35em 0}.tcard .tbody ul{margin:.35em 0;padding-left:1.2em}
+.tcard.goal{border-left-color:var(--sun);background:var(--sun-soft)}.tcard.goal .tlabel{color:var(--fg)}
+.tcard.rule{border-left-color:var(--ok)}.tcard.rule .tlabel{color:var(--ok)}
+.tcard.warn{border-left-color:var(--bad)}.tcard.warn .tlabel{color:var(--bad)}
+.tcard.ex{border-left-color:var(--m2)}.tcard.ex .tlabel{color:var(--m2)}
+.tsteps{margin:.6em 0;padding-left:1.4em}.tsteps li{margin:.3em 0}.tcard .btn.sm{min-height:36px;padding:4px 14px}
 .fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;font-size:.85em;line-height:1.15;margin:0 .1em}
 .fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 .2em}
 .fr>span:last-child{padding:0 .2em}
