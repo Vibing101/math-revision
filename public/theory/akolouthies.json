@@ -503,7 +503,7 @@
         "Αριθμητές: 3·2, 3·4, 3·8, 3·16, … Είναι 3·2<sup>ν</sup>.",
         "Παρονομαστές: 4, 7, 10, 13, … Αυξάνονται κατά 3, άρα 3ν + 1.",
         "Έλεγχος: ν = 2 → <span class=\"fr\"><span>3·4</span><span>7</span></span>. Σωστό.",
-        "Γενικός τύπος: α<sub>ν</sub> = <span class=\"fr\"><span>3·2<sup>ν<</span><span>sup>/3ν + 1</span></span>."
+        "Γενικός τύπος: α<sub>ν</sub> = <span class=\"fr\"><span>3·2<sup>ν</sup></span><span>3ν + 1</span></span>."
        ]
       },
       {
@@ -513,7 +513,7 @@
         "Αριθμητές: 5·3, 5·9, 5·27, 5·81, … Είναι 5·3<sup>ν</sup>.",
         "Παρονομαστές: 2, 5, 8, 11, … Αυξάνονται κατά 3, άρα 3ν − 1.",
         "Έλεγχος: ν = 2 → <span class=\"fr\"><span>5·9</span><span>5</span></span>. Σωστό.",
-        "Γενικός τύπος: α<sub>ν</sub> = <span class=\"fr\"><span>5·3<sup>ν<</span><span>sup>/3ν − 1</span></span>."
+        "Γενικός τύπος: α<sub>ν</sub> = <span class=\"fr\"><span>5·3<sup>ν</sup></span><span>3ν − 1</span></span>."
        ]
       }
      ]

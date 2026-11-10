@@ -66,7 +66,7 @@
     {
      "type": "example",
      "title": "Παράδειγμα",
-     "html": "<p>Στο τετράγωνο ΑΒΓΔ (Α κάτω αριστερά, Β κάτω δεξιά, Γ πάνω δεξιά, Δ πάνω αριστερά): (α) γράψε δύο διανύσματα με αρχή το Β, (β) ένα διάνυσμα ίσο με το <span class=\"vec\">ΔΓ</span>, (γ) τη σχέση των <span class=\"vec\">ΓΒ</span> και <span class=\"vec\">ΑΔ</span>.",
+     "html": "<p>Στο τετράγωνο ΑΒΓΔ (Α κάτω αριστερά, Β κάτω δεξιά, Γ πάνω δεξιά, Δ πάνω αριστερά): (α) γράψε δύο διανύσματα με αρχή το Β, (β) ένα διάνυσμα ίσο με το <span class=\"vec\">ΔΓ</span>, (γ) τη σχέση των <span class=\"vec\">ΓΒ</span> και <span class=\"vec\">ΑΔ</span>.</p>",
      "steps": [
       "(α) Τα <span class=\"vec\">ΒΑ</span> και <span class=\"vec\">ΒΓ</span> έχουν αρχή το Β.",
       "(β) Το <span class=\"vec\">ΑΒ</span> είναι ίσο με το <span class=\"vec\">ΔΓ</span>.",
@@ -149,7 +149,7 @@
     {
      "type": "example",
      "title": "Παράδειγμα 1α",
-     "html": "<p>Στο ορθογώνιο ΑΒΓΔ με κέντρο Ο (Α πάνω αριστερά, Β πάνω δεξιά, Γ κάτω δεξιά, Δ κάτω αριστερά) βρες το διάνυσμα: (α) <span class=\"vec\">ΑΒ</span>+<span class=\"vec\">ΒΓ</span>, (β) <span class=\"vec\">ΑΓ</span>+<span class=\"vec\">ΔΑ</span>, (γ) <span class=\"vec\">ΒΟ</span>+<span class=\"vec\">ΟΔ</span>.",
+     "html": "<p>Στο ορθογώνιο ΑΒΓΔ με κέντρο Ο (Α πάνω αριστερά, Β πάνω δεξιά, Γ κάτω δεξιά, Δ κάτω αριστερά) βρες το διάνυσμα: (α) <span class=\"vec\">ΑΒ</span>+<span class=\"vec\">ΒΓ</span>, (β) <span class=\"vec\">ΑΓ</span>+<span class=\"vec\">ΔΑ</span>, (γ) <span class=\"vec\">ΒΟ</span>+<span class=\"vec\">ΟΔ</span>.</p>",
      "steps": [
       "(α) Τα <span class=\"vec\">ΑΒ</span> και <span class=\"vec\">ΒΓ</span> είναι διαδοχικά. <span class=\"vec\">ΑΒ</span> + <span class=\"vec\">ΒΓ</span> = <span class=\"vec\">ΑΓ</span>.",
       "(β) Αλλάζουμε σειρά: <span class=\"vec\">ΑΓ</span> + <span class=\"vec\">ΔΑ</span> = <span class=\"vec\">ΔΑ</span> + <span class=\"vec\">ΑΓ</span>.",
