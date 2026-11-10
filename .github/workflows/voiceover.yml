@@ -25,6 +25,7 @@ concurrency:
 jobs:
   voiceover:
     runs-on: ubuntu-latest
+    environment: production   # the Azure Speech key is a secret of this environment (as in deploy.yml)
     steps:
       - uses: actions/checkout@v5
       - name: ffmpeg
