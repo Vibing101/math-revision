@@ -19,7 +19,7 @@
 //! The teacher PIN lives in the `TEACHER_PIN` secret, never in the page.
 //! Natural voices need the `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` secrets;
 //! without them the page uses the device's own voice. `SPEECHIFY_API_KEY` adds the
-//! Speechify voice Ελένη (`v=e`).
+//! Speechify voices Ελένη (`v=e`) and Κώστας (`v=k`).
 
 use hmac::{Hmac, Mac};
 use quiz_core::{
@@ -261,8 +261,15 @@ async fn video_tts(req: Request, env: &Env) -> Result<Response> {
     speak(&req, env, text, q.get("v").map(String::as_str)).await
 }
 
-/// Speechify voice behind `v=e` (Ελένη); needs the `SPEECHIFY_API_KEY` secret.
-const SPEECHIFY_VOICE: &str = "eleni";
+/// Speechify voices (need the `SPEECHIFY_API_KEY` secret): `e` Ελένη, `k` Κώστας.
+/// Each has an Azure stand-in of the same gender.
+fn speechify_voice(v: &str) -> Option<(&'static str, &'static str)> {
+    match v {
+        "e" => Some(("eleni", "f")),
+        "k" => Some(("kostas", "m")),
+        _ => None,
+    }
+}
 const SPEECHIFY_MODEL: &str = "simba-3.5";
 
 async fn post(url: &str, headers: Headers, body: String) -> Option<Response> {
@@ -306,11 +313,11 @@ async fn azure_audio(key: &str, region: &str, voice: &str, text: &str) -> Option
 }
 
 /// Speechify answers with JSON; the MP3 is Base64 in `audio_data`.
-async fn speechify_audio(key: &str, text: &str) -> Option<Vec<u8>> {
+async fn speechify_audio(key: &str, voice: &str, text: &str) -> Option<Vec<u8>> {
     use base64::Engine;
     let body = json!({
         "input": text,
-        "voice_id": SPEECHIFY_VOICE,
+        "voice_id": voice,
         "model": SPEECHIFY_MODEL,
         "audio_format": "mp3",
         "options": { "text_normalization": true },
@@ -329,22 +336,21 @@ async fn speechify_audio(key: &str, text: &str) -> Option<Vec<u8>> {
         .filter(|a| !a.is_empty())
 }
 
-/// One sentence as MP3, cached. `v`: `m` Νέστορας / `f` Αθηνά (Azure), `e` Ελένη (Speechify).
-/// When Speechify cannot answer (no key, monthly cap reached) Αθηνά speaks instead.
+/// One sentence as MP3, cached. `v`: `m` Νέστορας / `f` Αθηνά (Azure), `e` Ελένη / `k` Κώστας
+/// (Speechify). When Speechify cannot answer (no key, monthly cap reached) the Azure voice of
+/// the same gender speaks instead.
 async fn speak(req: &Request, env: &Env, text: &str, v: Option<&str>) -> Result<Response> {
     let v = v.unwrap_or("m");
-    let speechify = (v == "e")
-        .then(|| secret(env, "SPEECHIFY_API_KEY"))
-        .flatten();
+    let sp_voice = speechify_voice(v);
+    let speechify = sp_voice.and_then(|_| secret(env, "SPEECHIFY_API_KEY"));
     let az = azure(env);
     if speechify.is_none() && az.is_none() {
         return bad("δεν υπάρχει φυσική φωνή", 503);
     }
-    let az_voice = azure_voice(if v == "e" { "f" } else { v });
-    let voice = if speechify.is_some() {
-        format!("speechify-{SPEECHIFY_VOICE}-{SPEECHIFY_MODEL}")
-    } else {
-        az_voice.to_string()
+    let az_voice = azure_voice(sp_voice.map_or(v, |(_, stand_in)| stand_in));
+    let voice = match (sp_voice, &speechify) {
+        (Some((id, _)), Some(_)) => format!("speechify-{id}-{SPEECHIFY_MODEL}"),
+        _ => az_voice.to_string(),
     };
     // Same sentence + voice → same audio, whatever question it came from.
     let digest = hex(&<Sha256 as sha2::Digest>::digest(
@@ -369,10 +375,10 @@ async fn speak(req: &Request, env: &Env, text: &str, v: Option<&str>) -> Result<
         }
     }
     let mut audio = None;
-    if let Some(key) = &speechify {
-        audio = speechify_audio(key, text).await;
+    if let (Some((id, _)), Some(key)) = (sp_voice, &speechify) {
+        audio = speechify_audio(key, id, text).await;
     }
-    // A stand-in for Speechify is not kept: Ελένη should come back as soon as she can.
+    // A stand-in for Speechify is not kept: the chosen voice should come back as soon as it can.
     let keep = audio.is_some() || speechify.is_none();
     if audio.is_none() {
         if let Some((key, region)) = &az {

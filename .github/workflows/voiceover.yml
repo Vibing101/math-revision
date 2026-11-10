@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       voice:
-        description: Φωνή (e = Ελένη, m = Νέστορας, f = Αθηνά)
+        description: Φωνή (e = Ελένη, k = Κώστας, m = Νέστορας, f = Αθηνά)
         default: e
 
 permissions:
