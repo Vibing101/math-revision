@@ -20,6 +20,7 @@
 //! Natural voices need the `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` secrets;
 //! without them the page uses the device's own voice. `SPEECHIFY_API_KEY` adds the
 //! Speechify voices Ελένη (`v=e`) and Κώστας (`v=k`).
+//! Every spoken sentence is stored in the `TTS_AUDIO` KV namespace, so it is paid for once.
 
 use hmac::{Hmac, Mac};
 use quiz_core::{
@@ -361,6 +362,15 @@ async fn speak(req: &Request, env: &Env, text: &str, v: Option<&str>) -> Result<
     if let Ok(Some(hit)) = cache.get(&cache_key, false).await {
         return Ok(hit);
     }
+    // Spoken once, kept for good: the edge cache above forgets, the KV store does not.
+    let store = env.kv("TTS_AUDIO").ok();
+    if let Some(kv) = &store {
+        if let Ok(Some(audio)) = kv.get(&digest).bytes().await {
+            let mut out = mp3(audio)?;
+            let _ = cache.put(&cache_key, out.cloned()?).await;
+            return Ok(out);
+        }
+    }
     if let Ok(limiter) = env.rate_limiter("TTS_LIMITER") {
         let ip = req
             .headers()
@@ -388,15 +398,33 @@ async fn speak(req: &Request, env: &Env, text: &str, v: Option<&str>) -> Result<
     let Some(audio) = audio else {
         return bad("η φυσική φωνή δεν είναι διαθέσιμη", 502);
     };
-    let mut out = Response::from_bytes(audio)?;
-    out.headers_mut().set("content-type", "audio/mpeg")?;
     if !keep {
+        let mut out = Response::from_bytes(audio)?;
+        out.headers_mut().set("content-type", "audio/mpeg")?;
         out.headers_mut().set("cache-control", "no-store")?;
         return Ok(out);
     }
+    if let Some(kv) = &store {
+        match kv.put_bytes(&digest, &audio) {
+            Ok(put) => {
+                if let Err(e) = put.execute().await {
+                    console_error!("tts store: {e}");
+                }
+            }
+            Err(e) => console_error!("tts store: {e}"),
+        }
+    }
+    let mut out = mp3(audio)?;
+    let _ = cache.put(&cache_key, out.cloned()?).await;
+    Ok(out)
+}
+
+/// A finished clip: the same sentence and voice never change, so browsers may keep it.
+fn mp3(audio: Vec<u8>) -> Result<Response> {
+    let mut out = Response::from_bytes(audio)?;
+    out.headers_mut().set("content-type", "audio/mpeg")?;
     out.headers_mut()
         .set("cache-control", "public, max-age=31536000, immutable")?;
-    let _ = cache.put(&cache_key, out.cloned()?).await;
     Ok(out)
 }
 
