@@ -34,7 +34,7 @@ body{margin:0}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 /* the page is a sheet of squared exercise paper; cards sit on it */
-body{background-color:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55;
+body{background-color:var(--bg);color:var(--fg);font-family:var(--body);font-size:1rem;line-height:var(--lh,1.55);
   background-image:linear-gradient(var(--paper) 1px,transparent 1px),linear-gradient(90deg,var(--paper) 1px,transparent 1px);background-size:24px 24px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 64px}
 .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
@@ -128,6 +128,44 @@ table.st th,table.st td{border-bottom:1px solid var(--line);padding:6px 8px;text
 .chk:has(input:checked){border-color:var(--accent)}
 .chk input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
 table.st th[colspan]{background:var(--chip)}
+/* learning support: settings, calm mode, break reminder, one-card mode */
+.prefs-btn{position:fixed;left:12px;bottom:12px;z-index:30;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--fg);font-size:.9rem;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.prefs-btn .ic{width:22px;height:22px}
+@media (max-width:640px){.prefs-btn{width:48px;height:48px;padding:0;justify-content:center}.prefs-btn span{display:none}}
+body{padding-bottom:84px}
+.tnav{position:sticky;bottom:10px;z-index:15;justify-content:center;gap:10px;padding:10px 12px 10px 64px;background:var(--bg);border-radius:16px;box-shadow:0 -4px 12px rgba(0,0,0,.08)}
+@media (min-width:641px){.tnav{padding-left:12px}}
+dialog.prefs{border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--fg);padding:20px;max-width:min(30rem,calc(100vw - 24px));width:100%}
+dialog.prefs::backdrop{background:rgba(0,0,0,.45)}
+dialog.prefs h2{margin-bottom:6px}dialog.prefs fieldset{border:0;padding:0;margin:14px 0}dialog.prefs legend{font-weight:700;margin-bottom:6px;padding:0}
+.pseg{display:flex;flex-wrap:wrap;gap:8px}.segopt input{position:absolute;opacity:0}.segopt span{display:inline-flex;align-items:center;min-height:44px;padding:6px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer}
+.segopt input:checked+span{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}.segopt input:focus-visible+span{outline:3px solid var(--sun);outline-offset:2px}
+.chk{display:flex;gap:12px;align-items:flex-start;margin:14px 0;cursor:pointer}.chk input{width:24px;height:24px;flex:none;margin-top:2px}
+.brk{position:fixed;left:12px;right:12px;bottom:68px;z-index:29;max-width:34rem;margin:0 auto;display:flex;flex-direction:column;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.breaktime{font:700 3rem var(--display);text-align:center;margin:8px 0;font-variant-numeric:tabular-nums}
+html.calm .stats,html.calm .badges,html.calm .pop,html.calm .spark{display:none!important}
+html.calm *{animation:none!important;transition:none!important}
+.tbar{position:sticky;top:0;z-index:10;background:var(--bg);padding:8px 0;display:flex;flex-direction:column;gap:6px}
+.tbar .bar{height:8px}.tbar .row{align-items:center;justify-content:space-between}.tbar .cnt{font-size:.9rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tu[hidden]{display:none}.one .tu:not(.cur){opacity:.62}.one .tu.cur .tcard{box-shadow:0 0 0 3px var(--sun)}
+.tcard .listen{margin-top:8px}.tcard.check{border-left-color:var(--sun)}.tcard.check .tlabel{color:var(--fg)}
+.rate{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.rate button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.toc a.done{background:var(--ok-soft);color:var(--ok)}.toc a.done::before{content:"✓ "}
+/* weekly target and mistakes list */
+.goal{display:flex;flex-direction:column;gap:10px;margin:16px 0}.grow{display:flex;flex-direction:column;gap:6px}.grow .bar>i{background:var(--ok)}
+.mklist{list-style:none;margin:12px 0;padding:0;display:flex;flex-direction:column;gap:10px}.mk{display:flex;flex-direction:column;gap:6px}.mk .row{margin-top:4px}
+/* theory cards */
+.vec{position:relative;display:inline-block;padding-top:.1em}.vec::after{content:"→";position:absolute;left:0;right:0;top:-.62em;text-align:center;font-size:.7em;line-height:1}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.toc a{background:var(--chip);border-radius:999px;padding:6px 14px;color:var(--fg);text-decoration:none;font-size:.92rem}
+.tsec{margin:28px 0}.tsec>h2{margin-bottom:12px}
+.tcard{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:14px;padding:14px 18px;margin:12px 0;max-width:46rem}
+.tcard .tlabel{display:block;font-size:.8rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.tcard .tbody p{margin:.35em 0}.tcard .tbody ul{margin:.35em 0;padding-left:1.2em}
+.tcard.goal{border-left-color:var(--sun);background:var(--sun-soft)}.tcard.goal .tlabel{color:var(--fg)}
+.tcard.rule{border-left-color:var(--ok)}.tcard.rule .tlabel{color:var(--ok)}
+.tcard.warn{border-left-color:var(--bad)}.tcard.warn .tlabel{color:var(--bad)}
+.tcard.ex{border-left-color:var(--m2)}.tcard.ex .tlabel{color:var(--m2)}
+.tsteps{margin:.6em 0;padding-left:1.4em}.tsteps li{margin:.3em 0}.tcard .btn.sm{min-height:36px;padding:4px 14px}
 .fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;font-size:.85em;line-height:1.15;margin:0 .1em}
 .fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 .2em}
 .fr>span:last-child{padding:0 .2em}
@@ -225,6 +263,8 @@ dialog.lv::backdrop{background:rgba(5,12,18,.6)}
 </head>
 <body>
 <div class="wrap" id="app"><p class="loading">Φόρτωση…</p></div>
+<script src="/support.js"></script>
+<script src="/mine.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

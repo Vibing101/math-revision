@@ -1,0 +1,175 @@
+{
+ "chapter": "dianysmata",
+ "sections": [
+  {
+   "title": "Η Έννοια του Διανύσματος",
+   "practice": "vec-concept",
+   "cards": [
+    {
+     "type": "goal",
+     "html": "<p>Θα μάθουμε τι είναι διάνυσμα και πότε δύο διανύσματα είναι παράλληλα, ομόρροπα, αντίρροπα, ίσα ή αντίθετα.</p>"
+    },
+    {
+     "type": "def",
+     "title": "Μονόμετρο μέγεθος",
+     "html": "<p><b>Μονόμετρο</b> λέγεται το μέγεθος που χαρακτηρίζεται μόνο από το <b>μέτρο</b> του.</p><p>Π.χ. μήκος, μάζα, θερμοκρασία.</p>"
+    },
+    {
+     "type": "def",
+     "title": "Διανυσματικό μέγεθος",
+     "html": "<p><b>Διανυσματικό</b> λέγεται το μέγεθος που έχει <b>μέτρο και κατεύθυνση</b>.</p><p>Π.χ. ταχύτητα, δύναμη.</p>"
+    },
+    {
+     "type": "def",
+     "title": "Διάνυσμα",
+     "html": "<p>Το διάνυσμα είναι ένα <b>βέλος</b> με <b>αρχή</b> Α (σημείο εφαρμογής) και <b>τέλος</b> Β.</p><p>Το γράφουμε <span class=\"vec\">ΑΒ</span> ή <span class=\"vec\">α</span>.</p>"
+    },
+    {
+     "type": "def",
+     "title": "Στοιχεία διανύσματος",
+     "html": "<p>Ένα διάνυσμα έχει τρία στοιχεία:</p><ul><li><b>Διεύθυνση:</b> η ευθεία ΑΒ ή κάθε παράλληλή της.</li><li><b>Φορά:</b> από το Α προς το Β (<span class=\"vec\">ΑΒ</span>) ή από το Β προς το Α (<span class=\"vec\">ΒΑ</span>).</li><li><b>Μέτρο:</b> το μήκος του τμήματος ΑΒ.</li></ul>"
+    },
+    {
+     "type": "rule",
+     "title": "Μέτρο",
+     "html": "<p>Το μέτρο του <span class=\"vec\">ΑΒ</span> γράφεται |<span class=\"vec\">ΑΒ</span>| (ή |<span class=\"vec\">α</span>|).</p><p>Είναι πάντοτε θετικός αριθμός ή μηδέν.</p><p>Διεύθυνση και φορά μαζί λέγονται <b>κατεύθυνση</b>.</p>"
+    },
+    {
+     "type": "def",
+     "title": "Μηδενικό διάνυσμα",
+     "html": "<p><b>Μηδενικό</b> είναι το διάνυσμα με αρχή και τέλος το ίδιο σημείο. Το γράφουμε <span class=\"vec\">0</span> και έχει μέτρο 0.</p>"
+    },
+    {
+     "type": "def",
+     "title": "Παράλληλα διανύσματα",
+     "html": "<p><b>Παράλληλα</b> (ή <b>συγγραμμικά</b>) λέγονται τα μη μηδενικά διανύσματα που έχουν την <b>ίδια διεύθυνση</b>.</p>"
+    },
+    {
+     "type": "def",
+     "title": "Ομόρροπα και αντίρροπα",
+     "html": "<p>Τα παράλληλα διανύσματα είναι:</p><ul><li><b>Ομόρροπα</b>, αν έχουν την ίδια φορά.</li><li><b>Αντίρροπα</b>, αν έχουν αντίθετη φορά.</li></ul>"
+    },
+    {
+     "type": "def",
+     "title": "Ίσα διανύσματα",
+     "html": "<p><b>Ίσα</b> είναι τα διανύσματα με ίδια διεύθυνση, ίδια φορά και <b>ίδιο μέτρο</b>.</p><p>Γράφουμε <span class=\"vec\">α</span> = <span class=\"vec\">β</span>.</p>"
+    },
+    {
+     "type": "def",
+     "title": "Αντίθετα διανύσματα",
+     "html": "<p><b>Αντίθετα</b> είναι τα διανύσματα με ίδια διεύθυνση, ίδιο μέτρο, αλλά <b>αντίθετη φορά</b>.</p><p>Γράφουμε <span class=\"vec\">ΑΒ</span> = −<span class=\"vec\">ΒΑ</span>.</p>"
+    },
+    {
+     "type": "warn",
+     "html": "<p>Ίσο μέτρο δεν αρκεί για να είναι ίσα τα διανύσματα. Πρέπει να έχουν και την ίδια διεύθυνση και την ίδια φορά.</p>"
+    },
+    {
+     "type": "example",
+     "title": "Παράδειγμα",
+     "html": "<p>Στο τετράγωνο ΑΒΓΔ (Α κάτω αριστερά, Β κάτω δεξιά, Γ πάνω δεξιά, Δ πάνω αριστερά): (α) γράψε δύο διανύσματα με αρχή το Β, (β) ένα διάνυσμα ίσο με το <span class=\"vec\">ΔΓ</span>, (γ) τη σχέση των <span class=\"vec\">ΓΒ</span> και <span class=\"vec\">ΑΔ</span>.",
+     "steps": [
+      "(α) Τα <span class=\"vec\">ΒΑ</span> και <span class=\"vec\">ΒΓ</span> έχουν αρχή το Β.",
+      "(β) Το <span class=\"vec\">ΑΒ</span> είναι ίσο με το <span class=\"vec\">ΔΓ</span>.",
+      "Γιατί: έχουν την ίδια διεύθυνση (απέναντι πλευρές), την ίδια φορά και το ίδιο μέτρο (πλευρές τετραγώνου).",
+      "(γ) Τα <span class=\"vec\">ΓΒ</span> και <span class=\"vec\">ΑΔ</span> έχουν την ίδια διεύθυνση και αντίθετη φορά (αντίρροπα).",
+      "Έχουν και το ίδιο μέτρο, άρα είναι αντίθετα: <span class=\"vec\">ΓΒ</span> = −<span class=\"vec\">ΑΔ</span>."
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Πράξεις με Διανύσματα",
+   "practice": "vec-ops",
+   "cards": [
+    {
+     "type": "goal",
+     "html": "<p>Θα μάθουμε να προσθέτουμε και να αφαιρούμε διανύσματα.</p>"
+    },
+    {
+     "type": "def",
+     "title": "Διαδοχικά διανύσματα",
+     "html": "<p>Δύο διανύσματα είναι <b>διαδοχικά</b> όταν το <b>τέλος</b> του πρώτου είναι η <b>αρχή</b> του δεύτερου.</p><p>Π.χ. τα <span class=\"vec\">ΑΒ</span> και <span class=\"vec\">ΒΓ</span>.</p>"
+    },
+    {
+     "type": "rule",
+     "title": "Άθροισμα διαδοχικών",
+     "html": "<p>Το άθροισμα δύο διαδοχικών διανυσμάτων έχει <b>αρχή</b> την αρχή του πρώτου και <b>τέλος</b> το τέλος του δεύτερου.</p><p><span class=\"vec\">ΑΒ</span> + <span class=\"vec\">ΒΓ</span> = <span class=\"vec\">ΑΓ</span></p>"
+    },
+    {
+     "type": "rule",
+     "title": "Πολλά διαδοχικά",
+     "html": "<p>Για περισσότερα από δύο διαδοχικά διανύσματα, το άθροισμα πάει από την αρχή του πρώτου ως το τέλος του τελευταίου.</p><p><span class=\"vec\">ΑΒ</span> + <span class=\"vec\">ΒΓ</span> + <span class=\"vec\">ΓΔ</span> = <span class=\"vec\">ΑΔ</span></p>"
+    },
+    {
+     "type": "rule",
+     "title": "Μη διαδοχικά διανύσματα",
+     "html": "<p>Αν τα <span class=\"vec\">α</span> και <span class=\"vec\">β</span> δεν είναι διαδοχικά, σχεδιάζουμε <span class=\"vec\">ΑΒ</span> = <span class=\"vec\">α</span> και <span class=\"vec\">ΒΓ</span> = <span class=\"vec\">β</span>. Τότε:</p><p><span class=\"vec\">α</span> + <span class=\"vec\">β</span> = <span class=\"vec\">ΑΒ</span> + <span class=\"vec\">ΒΓ</span> = <span class=\"vec\">ΑΓ</span></p>"
+    },
+    {
+     "type": "note",
+     "title": "Μέθοδος παραλληλογράμμου",
+     "html": "<p>Σχεδιάζουμε <span class=\"vec\">ΑΒ</span> = <span class=\"vec\">α</span> και <span class=\"vec\">ΑΓ</span> = <span class=\"vec\">β</span> με κοινή αρχή Α. Φτιάχνουμε το παραλληλόγραμμο ΑΒΔΓ. Το <span class=\"vec\">ΑΔ</span> είναι το άθροισμα.</p>"
+    },
+    {
+     "type": "rule",
+     "title": "Διαφορά διανυσμάτων",
+     "html": "<p>Η διαφορά <span class=\"vec\">α</span> − <span class=\"vec\">β</span> είναι το άθροισμα του <span class=\"vec\">α</span> με το <b>αντίθετο</b> του <span class=\"vec\">β</span>.</p><p><span class=\"vec\">α</span> − <span class=\"vec\">β</span> = <span class=\"vec\">α</span> + (−<span class=\"vec\">β</span>)</p>"
+    },
+    {
+     "type": "note",
+     "title": "Άθροισμα αντιθέτων",
+     "html": "<p><span class=\"vec\">ΑΒ</span> + <span class=\"vec\">ΒΑ</span> = <span class=\"vec\">α</span> + (−<span class=\"vec\">α</span>) = <span class=\"vec\">α</span> − <span class=\"vec\">α</span> = <span class=\"vec\">0</span></p>"
+    },
+    {
+     "type": "warn",
+     "html": "<p>Για να προσθέσεις, τα διανύσματα πρέπει να είναι <b>διαδοχικά</b>. Αν δεν είναι, μετακίνησε το ένα, ώστε η αρχή του να πέσει στο τέλος του άλλου.</p>"
+    },
+    {
+     "type": "example",
+     "title": "Παράδειγμα 1α",
+     "html": "<p>Στο ορθογώνιο ΑΒΓΔ με κέντρο Ο (Α πάνω αριστερά, Β πάνω δεξιά, Γ κάτω δεξιά, Δ κάτω αριστερά) βρες το διάνυσμα: (α) <span class=\"vec\">ΑΒ</span>+<span class=\"vec\">ΒΓ</span>, (β) <span class=\"vec\">ΑΓ</span>+<span class=\"vec\">ΔΑ</span>, (γ) <span class=\"vec\">ΒΟ</span>+<span class=\"vec\">ΟΔ</span>.",
+     "steps": [
+      "(α) Τα <span class=\"vec\">ΑΒ</span> και <span class=\"vec\">ΒΓ</span> είναι διαδοχικά. <span class=\"vec\">ΑΒ</span> + <span class=\"vec\">ΒΓ</span> = <span class=\"vec\">ΑΓ</span>.",
+      "(β) Αλλάζουμε σειρά: <span class=\"vec\">ΑΓ</span> + <span class=\"vec\">ΔΑ</span> = <span class=\"vec\">ΔΑ</span> + <span class=\"vec\">ΑΓ</span>.",
+      "Τώρα είναι διαδοχικά: <span class=\"vec\">ΔΑ</span> + <span class=\"vec\">ΑΓ</span> = <span class=\"vec\">ΔΓ</span>.",
+      "(γ) Τα <span class=\"vec\">ΒΟ</span> και <span class=\"vec\">ΟΔ</span> είναι διαδοχικά. <span class=\"vec\">ΒΟ</span> + <span class=\"vec\">ΟΔ</span> = <span class=\"vec\">ΒΔ</span>."
+     ]
+    },
+    {
+     "type": "example",
+     "title": "Παράδειγμα 1β",
+     "html": "<p>Στο ίδιο ορθογώνιο βρες το διάνυσμα: (δ) <span class=\"vec\">ΑΟ</span> − <span class=\"vec\">ΟΔ</span>, (ε) <span class=\"vec\">ΑΒ</span> − <span class=\"vec\">ΑΓ</span>.</p>",
+     "steps": [
+      "Μετατρέπουμε τη διαφορά σε άθροισμα με το αντίθετο.",
+      "(δ) <span class=\"vec\">ΑΟ</span> − <span class=\"vec\">ΟΔ</span> = <span class=\"vec\">ΑΟ</span> + (−<span class=\"vec\">ΟΔ</span>).",
+      "Το αντίθετο του <span class=\"vec\">ΟΔ</span> είναι το <span class=\"vec\">ΟΒ</span>. Άρα <span class=\"vec\">ΑΟ</span> + <span class=\"vec\">ΟΒ</span> = <span class=\"vec\">ΑΒ</span>.",
+      "(ε) <span class=\"vec\">ΑΒ</span> − <span class=\"vec\">ΑΓ</span> = <span class=\"vec\">ΑΒ</span> + (−<span class=\"vec\">ΑΓ</span>) = <span class=\"vec\">ΑΒ</span> + <span class=\"vec\">ΓΑ</span>.",
+      "Αλλάζουμε σειρά: <span class=\"vec\">ΓΑ</span> + <span class=\"vec\">ΑΒ</span> = <span class=\"vec\">ΓΒ</span>."
+     ]
+    },
+    {
+     "type": "example",
+     "title": "Παράδειγμα 2α",
+     "html": "<p>Δίνονται τα <span class=\"vec\">α</span>, <span class=\"vec\">β</span>, <span class=\"vec\">γ</span>. Να σχεδιάσεις το <span class=\"vec\">α</span> + <span class=\"vec\">β</span>.</p>",
+     "steps": [
+      "Τα <span class=\"vec\">α</span> και <span class=\"vec\">β</span> δεν είναι διαδοχικά.",
+      "Σχεδιάζουμε το <span class=\"vec\">α</span>, ώστε να έχει κοινή αρχή με το <span class=\"vec\">β</span>.",
+      "Με τη μέθοδο του παραλληλογράμμου φτιάχνουμε το παραλληλόγραμμο με πλευρές <span class=\"vec\">α</span> και <span class=\"vec\">β</span>.",
+      "Το άθροισμα <span class=\"vec\">α</span> + <span class=\"vec\">β</span> έχει αρχή την κοινή αρχή και τέλος την απέναντι κορυφή."
+     ]
+    },
+    {
+     "type": "example",
+     "title": "Παράδειγμα 2β",
+     "html": "<p>Δίνονται τα <span class=\"vec\">α</span>, <span class=\"vec\">β</span>, <span class=\"vec\">γ</span>. Να σχεδιάσεις το <span class=\"vec\">β</span> − <span class=\"vec\">γ</span>.</p>",
+     "steps": [
+      "Σχεδιάζουμε το <span class=\"vec\">γ</span>, ώστε να έχει αρχή το τέλος του <span class=\"vec\">β</span>.",
+      "Σχεδιάζουμε το αντίθετο −<span class=\"vec\">γ</span> με κοινή αρχή με το <span class=\"vec\">γ</span>.",
+      "Τα <span class=\"vec\">β</span> και −<span class=\"vec\">γ</span> είναι διαδοχικά.",
+      "Το <span class=\"vec\">β</span> + (−<span class=\"vec\">γ</span>) = <span class=\"vec\">β</span> − <span class=\"vec\">γ</span> έχει αρχή την αρχή του <span class=\"vec\">β</span> και τέλος το τέλος του −<span class=\"vec\">γ</span>."
+     ]
+    }
+   ]
+  }
+ ]
+}
