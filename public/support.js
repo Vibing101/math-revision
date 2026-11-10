@@ -118,4 +118,4 @@ function speakCard(btn, el) {
   speechSynthesis.speak(u);
 }
 
-document.addEventListener('DOMContentLoaded', mountPrefsButton);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountPrefsButton); else mountPrefsButton();

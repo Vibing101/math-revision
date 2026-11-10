@@ -196,8 +196,10 @@ async function renderTheory(id) {
   let th = THEORY[id];
   if (!th) {
     try { const r = await fetch(`/theory/${id}.json`); if (!r.ok) throw new Error(); th = THEORY[id] = await r.json(); }
-    catch (e) { app.querySelector('.loading').outerHTML = '<div class="card"><p style="margin:0">Η θεωρία αυτού του κεφαλαίου θα προστεθεί σύντομα.</p></div>'; return; }
+    catch (e) { const ph = app.querySelector('.loading'); if (ph) ph.outerHTML = '<div class="card"><p style="margin:0">Η θεωρία αυτού του κεφαλαίου θα προστεθεί σύντομα.</p></div>'; return; }
   }
+  const slot = app.querySelector('.loading');
+  if (!slot || location.hash !== '#th-' + id) return; // another navigation got here first
   const P = tprog(id), one = !!UIP.one;
   /* units: a card (with its section heading when it opens a section), and one self-check per section */
   let n = 0;
@@ -212,7 +214,7 @@ async function renderTheory(id) {
     return `<section class="tsec" id="ts-${i}">${cards}${check}</section>`;
   }).join('');
   const total = n;
-  app.querySelector('.loading').outerHTML = `<div class="tbar"><div class="row"><span class="cnt" id="t-cnt" aria-live="polite"></span>${one ? '' : `<span class="cnt">Ενότητες που κατάλαβες: ${theoryDone(id)} από ${th.sections.length}</span>`}</div><div class="bar"><i id="t-bar"></i></div></div>
+  slot.outerHTML = `<div class="tbar"><div class="row"><span class="cnt" id="t-cnt" aria-live="polite"></span>${one ? '' : `<span class="cnt">Ενότητες που κατάλαβες: ${theoryDone(id)} από ${th.sections.length}</span>`}</div><div class="bar"><i id="t-bar"></i></div></div>
     <nav class="toc card" aria-label="Ενότητες">${th.sections.map((s, i) => `<a href="#th-${id}" data-s="${i}"${P.sec[i] === '2' ? ' class="done"' : ''}>${esc(s.title)}</a>`).join('')}</nav>
     <div id="t-body" class="${one ? 'one' : ''}">${secHTML}</div>
     ${one ? `<div class="row tnav"><button class="btn ghost" id="t-prev" type="button">${I('back')}Πίσω</button><button class="btn big-btn" id="t-next" type="button">Επόμενο${I('next')}</button></div>` : ''}`;
