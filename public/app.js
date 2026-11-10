@@ -73,13 +73,14 @@ function route() {
   const h = location.hash;
   if (!S.grade || h === '#grade') return renderGrade();
   if (h === '#year') return renderYear();
+  if (h === '#mistakes') return renderMistakes();
   if (h === '#teacher') return renderTeacher();
   if (h.startsWith('#th-') && CHAPTERS.some((c) => '#th-' + c.id === h)) return renderTheory(h.slice(4));
   if (h.startsWith('#ch-') && CHAPTERS.some((c) => '#ch-' + c.id === h)) return renderChapter(h.slice(4));
   renderHome();
 }
 window.addEventListener('hashchange', route);
-const backLabel = () => (location.hash.startsWith('#ch-') || location.hash.startsWith('#th-') ? 'Κεφάλαιο' : location.hash === '#year' ? 'Επανάληψη χρονιάς' : 'Αρχική');
+const backLabel = () => (location.hash.startsWith('#ch-') || location.hash.startsWith('#th-') ? 'Κεφάλαιο' : location.hash === '#year' ? 'Επανάληψη χρονιάς' : location.hash === '#mistakes' ? 'Τα λάθη μου' : 'Αρχική');
 const backBtn = (label, id = 'home') => `<button class="link" id="${id}">${I('back')}${label}</button>`;
 
 function statsChips() { return `<div class="stats"><span class="stat">${I('star')}<b>${S.points}</b> πόντοι</span><span class="stat">${I('flame')}σερί <b>${S.streak}</b></span></div>`; }
@@ -114,6 +115,7 @@ function renderHome() {
   <section class="card cont"><span class="muted">${up.kicker}</span><h2 class="cont-t"><span class="mark">${esc(up.title)}</span></h2><span class="muted">${esc(up.sub)}</span>
    <div class="row cont-row"><button class="btn big-btn" id="go-next">${up.btn}${I('next')}</button>${statsChips()}</div>
    <div class="lvl"><span class="muted">Επίπεδο ${L.i + 1}: <b class="fg">${L.name}</b>${L.next ? ` · ${L.next} πόντοι για το επόμενο` : ''}</span><div class="bar" aria-hidden="true"><i style="width:${L.pct}%"></i></div></div></section>
+  ${goalCardHTML()}
   <h2>Κεφάλαια</h2>
   <div class="grid">${GCH().map((ch) => `<button class="cat chap" data-ch="${ch.id}"><span class="sec">Κεφάλαιο ${ch.number}</span><span class="t">${esc(ch.title)}</span><span class="d">${esc(ch.desc)}</span>${pctBar(chStats(ch.id))}</button>`).join('')}
    <button class="cat chap" id="go-year"><span class="sec">${I('cal')}Τέλος χρονιάς</span><span class="t">Επανάληψη χρονιάς</span><span class="d">Διάλεξε ποια κεφάλαια εξετάζονται και κάνε ένα μικτό επαναληπτικό.</span></button></div>
@@ -123,6 +125,7 @@ function renderHome() {
   app.querySelectorAll('[data-ch]').forEach((b) => (b.onclick = () => go('#ch-' + b.dataset.ch)));
   app.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => { S.grade = b.dataset.g; save(); renderHome(); }));
   $('#go-year').onclick = () => go('#year');
+  $('#goal-set').onclick = openGoal; $('#go-mk').onclick = () => go('#mistakes');
   $('#go-teacher').onclick = () => go('#teacher');
 }
 
@@ -211,7 +214,7 @@ async function renderTheory(id) {
   }));
   app.querySelectorAll('.listen').forEach((b) => (b.onclick = () => speakCard(b, b.closest('.tcard'))));
   app.querySelectorAll('.tcard.check').forEach((box) => box.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => {
-    const i = +box.dataset.sec; P.sec[i] = b.dataset.r; saveTP();
+    const i = +box.dataset.sec; if (P.sec[i] === undefined) actLog('t'); P.sec[i] = b.dataset.r; saveTP();
     box.querySelectorAll('[data-r]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     box.querySelector('.rmsg').textContent = RATE.find((r) => r[0] === b.dataset.r)[2];
     app.querySelector(`.toc a[data-s="${i}"]`).classList.toggle('done', b.dataset.r === '2');
@@ -261,19 +264,21 @@ function weightedCat(ids) {
 }
 
 /* ---------- question ---------- */
-async function start(cat) {
-  const c = cat || weightedCat(round.cats);
+async function start(cat, seed) {
+  const mk = round && round.mk ? round.mk[round.i] : null;
+  const c = mk ? mk.cat : cat || weightedCat(round.cats);
+  const useSeed = mk ? mk.seed : seed != null ? seed : newSeed();
   app.innerHTML = `<div class="top">${backBtn(backLabel())}${statsChips()}</div><section class="card"><p class="loading">Φόρτωση ερώτησης…</p></section>`;
   if (!round) { S.last = c; save(); }
   $('#home').onclick = goHome;
   try {
-    Q = await api(`/api/question?cat=${encodeURIComponent(c)}&seed=${newSeed()}`);
+    Q = await api(`/api/question?cat=${encodeURIComponent(c)}&seed=${useSeed}`);
   } catch (e) {
     app.querySelector('.card').innerHTML = netError(e) + '<div class="row" style="margin-top:12px"><button class="btn" id="retry">Δοκίμασε ξανά</button></div>';
-    $('#retry').onclick = () => start(cat);
+    $('#retry').onclick = () => start(cat, seed);
     return;
   }
-  Q.fixed = cat; qn++; hintsShown = 0; tries = 0; done = false; busy = false;
+  Q.fixed = cat || c; qn++; hintsShown = 0; tries = 0; done = false; busy = false;
   renderQ();
 }
 function goHome() { round = null; route(); }
@@ -380,8 +385,9 @@ async function check() {
     const pts = tries === 1 ? Math.max(4, 10 - 2 * hintsShown) : Math.max(2, 5 - hintsShown);
     const bonus = S.streak % 3 === 0 ? 5 : 0;
     S.points += pts + bonus; if (round) round.ok++; roundRecord(true);
+    const fromList = mkRemove(Q.cat, Q.seed); actLog('q');
     const nb = newBadges(); save();
-    fb.innerHTML = `<div class="fb ok"><span class="h">${pick(['Σωστό!', 'Μπράβο!', 'Τέλεια!', 'Εξαιρετικά!'])}${UIP.calm ? '' : ` +${pts} πόντοι${bonus ? ` · μπόνους σερί +${bonus}` : ''}`}</span>${nb.map((b) => `<span class="nb">${I('award')}Νέο παράσημο: <b>${b}</b></span>`).join('')}<div class="sol">${r.solution}</div></div>`;
+    fb.innerHTML = `<div class="fb ok"><span class="h">${pick(['Σωστό!', 'Μπράβο!', 'Τέλεια!', 'Εξαιρετικά!'])}${UIP.calm ? '' : ` +${pts} πόντοι${bonus ? ` · μπόνους σερί +${bonus}` : ''}`}</span>${nb.map((b) => `<span class="nb">${I('award')}Νέο παράσημο: <b>${b}</b></span>`).join('')}${fromList ? '<span>Η ερώτηση βγήκε από τη λίστα «Τα λάθη μου».</span>' : ''}<div class="sol">${r.solution}</div></div>`;
     celebrate(pts + bonus); finishUI();
   } else {
     for (const d of r.diag) if (d.tag) S.tags[d.tag] = (S.tags[d.tag] || 0) + 1;
@@ -391,7 +397,7 @@ async function check() {
       save();
       fb.innerHTML = `<div class="fb bad"><span class="h">Όχι ακόμα${ps.length > 1 ? ` · ${nOk} από ${ps.length} σωστά` : ''}.</span>${msgs || '<span>Έλεγξε ξανά τις πράξεις σου. Μπορείς να πατήσεις «Βοήθεια».</span>'}<span>Διόρθωσε τα κόκκινα και πάτα ξανά «Έλεγχος».</span></div>`;
     } else {
-      done = true; c.att++; S.streak = 0; roundRecord(false); save();
+      done = true; c.att++; S.streak = 0; roundRecord(false); mkAdd(Q.cat, Q.seed, msgs); actLog('q'); save();
       fb.innerHTML = `<div class="fb bad"><span class="h">Δες τη λύση και συνέχισε. Την επόμενη φορά θα το βρεις!</span>${msgs}<div class="sol">${r.solution}</div></div>`;
       finishUI();
     }

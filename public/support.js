@@ -18,7 +18,7 @@ function applyUI() {
 applyUI();
 
 /* ---------- settings dialog ---------- */
-const seg = (name, opts, cur) => `<div class="pseg" role="radiogroup" aria-label="${name}">${opts.map((o, i) => `<label class="segopt"><input type="radio" name="${name}" value="${i}"${i === cur ? ' checked' : ''}><span>${o}</span></label>`).join('')}</div>`;
+const seg = (name, opts, cur, label) => `<div class="pseg" role="radiogroup" aria-label="${label}">${opts.map((o, i) => `<label class="segopt"><input type="radio" name="${name}" value="${i}"${i === cur ? ' checked' : ''}><span>${o}</span></label>`).join('')}</div>`;
 
 function openPrefs() {
   let d = document.getElementById('prefs');
@@ -26,11 +26,11 @@ function openPrefs() {
   d.setAttribute('aria-labelledby', 'prefs-t');
   d.innerHTML = `<h2 id="prefs-t">Προσαρμογή</h2>
   <p class="muted">Διάλεξε ό,τι σε βοηθά. Οι επιλογές αποθηκεύονται μόνο σε αυτή τη συσκευή.</p>
-  <fieldset><legend>Μέγεθος γραμμάτων</legend>${seg('size', ['Κανονικό', 'Μεγάλο', 'Πολύ μεγάλο'], UIP.size)}</fieldset>
-  <fieldset><legend>Απόσταση γραμμών</legend>${seg('space', ['Κανονική', 'Μεγαλύτερη'], UIP.space)}</fieldset>
+  <fieldset><legend>Μέγεθος γραμμάτων</legend>${seg('size', ['Κανονικό', 'Μεγάλο', 'Πολύ μεγάλο'], UIP.size, 'Μέγεθος γραμμάτων')}</fieldset>
+  <fieldset><legend>Απόσταση γραμμών</legend>${seg('space', ['Κανονική', 'Μεγαλύτερη'], UIP.space, 'Απόσταση γραμμών')}</fieldset>
   <label class="chk"><input type="checkbox" id="p-calm"${UIP.calm ? ' checked' : ''}><span><b>Ήρεμη λειτουργία</b><br><span class="muted">Κρύβει πόντους, σερί και σήματα και σταματά τα εφέ. Μένει μόνο η εργασία.</span></span></label>
   <label class="chk"><input type="checkbox" id="p-one"${UIP.one ? ' checked' : ''}><span><b>Θεωρία: μία κάρτα τη φορά</b><br><span class="muted">Η επόμενη κάρτα εμφανίζεται όταν πατήσεις «Επόμενο».</span></span></label>
-  <fieldset><legend>Υπενθύμιση για διάλειμμα</legend>${seg('brk', ['Όχι', 'Κάθε 10΄', 'Κάθε 15΄', 'Κάθε 20΄'], [0, 10, 15, 20].indexOf(UIP.breakMin))}</fieldset>
+  <fieldset><legend>Υπενθύμιση για διάλειμμα</legend>${seg('brk', ['Όχι', 'Κάθε 10΄', 'Κάθε 15΄', 'Κάθε 20΄'], [0, 10, 15, 20].indexOf(UIP.breakMin), 'Υπενθύμιση για διάλειμμα')}</fieldset>
   <div class="row"><button class="btn" id="p-close">Έτοιμο</button></div>`;
   const get = (n) => +d.querySelector(`input[name="${n}"]:checked`).value;
   d.onchange = () => {
