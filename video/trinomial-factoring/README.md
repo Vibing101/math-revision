@@ -1,6 +1,6 @@
 # Βίντεο: Παραγοντοποίηση τριωνύμου (72″)
 
-`paragontopoiisi-trionymou.mp4` — 1920×1080, 30 fps, 72 s, χωρίς ήχο, με ενσωματωμένους υπότιτλους.
+Το βίντεο: 1920×1080, 30 fps, 72 s, χωρίς ήχο, με ενσωματωμένους υπότιτλους.
 x² + 7x + 10 = (x + 2)(x + 5), για μαθητές Γ΄ Γυμνασίου με ΔΕΠΥ.
 
 | Σκηνή | Χρόνος | Θέμα |
@@ -14,9 +14,12 @@ x² + 7x + 10 = (x + 2)(x + 5), για μαθητές Γ΄ Γυμνασίου μ
 | 7 | 0:56–1:05 | Προσοχή στα πρόσημα |
 | 8 | 1:05–1:12 | Ανακεφαλαίωση |
 
+Σελίδα (χωρίς σύνδεσμο από την αρχική): **https://maths.savvy-des.com/video/trinomial/** — το βίντεο με εκφώνηση από τις φωνές Azure (Νέστορας / Αθηνά).
+
+- `../../public/video/trinomial/paragontopoiisi-trionymou.mp4` — το βίντεο (χωρίς ήχο)· `index.html` εκεί είναι η σελίδα, που παίζει την εκφώνηση συγχρονισμένα.
+- Η εκφώνηση: `GET /api/video-tts?id=trinomial&line=0…8&v=m|f` (Worker· οι προτάσεις είναι το `VIDEO_LINES` στο `crates/site/src/lib.rs`, το κλειδί Azure μένει στον Worker).
 - `index.html` — όλη η κίνηση ως συνάρτηση του χρόνου `render(t)`. Άνοιξέ το σε browser για προεπισκόπηση (`?t=24.5` παγώνει σε μια στιγμή).
-- `subtitles.el.srt` — οι χρόνοι των υποτίτλων, για τον συγχρονισμό της εκφώνησης.
+- `subtitles.el.srt` — οι χρόνοι των υποτίτλων.
 - `render.mjs` — ξαναφτιάχνει το MP4: `node render.mjs` (θέλει Playwright/Chromium και ffmpeg).
+- `voiceover.mjs` — φτιάχνει αντίγραφο του MP4 με την εκφώνηση μέσα (`…-voice.mp4`), παίρνοντας τον ήχο από το site. Τρέχει και από το GitHub Actions («Video voice-over»).
 - `fonts/` — Comfortaa Bold (SIL OFL).
-- `paragontopoiisi-trionymou-voice.mp4` — το ίδιο βίντεο με ελληνική εκφώνηση (Azure, Νέστορας).
-- `voiceover.mjs` — φτιάχνει την εκφώνηση και τη μιξάρει στο βίντεο. Τρέχει στο GitHub Actions (`Video voice-over`), όπου το κλειδί Azure είναι secret του αποθετηρίου.

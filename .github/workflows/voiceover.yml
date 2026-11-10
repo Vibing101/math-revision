@@ -1,14 +1,8 @@
 name: Video voice-over
 
-# Speaks the narration of video/trinomial-factoring with the Azure neural voice and commits the voiced MP4
-# back to the branch. The Azure key stays in the repository secrets.
+# Makes the MP4 with the Greek voice-over mixed in and commits it to the branch it was started from.
+# The narration comes from the live site's /api/video-tts, so no key is needed here.
 on:
-  push:
-    branches-ignore: [main]
-    paths:
-      - video/trinomial-factoring/voiceover.mjs
-      - video/trinomial-factoring/paragontopoiisi-trionymou.mp4
-      - .github/workflows/voiceover.yml
   workflow_dispatch:
     inputs:
       voice:
@@ -18,23 +12,16 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: voiceover-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   voiceover:
     runs-on: ubuntu-latest
-    environment: production   # the Azure Speech key is a secret of this environment (as in deploy.yml)
     steps:
       - uses: actions/checkout@v5
       - name: ffmpeg
         run: command -v ffmpeg >/dev/null || (sudo apt-get update -q && sudo apt-get install -y -q ffmpeg)
-      - name: Speak and mix
+      - name: Fetch the narration and mix
         working-directory: video/trinomial-factoring
         env:
-          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY || secrets.AZURE_KEY || secrets.AZURE_TTS_KEY }}
-          AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION || vars.AZURE_SPEECH_REGION || 'westeurope' }}
           VOICE: ${{ inputs.voice || 'm' }}
         run: node voiceover.mjs
       - uses: actions/upload-artifact@v4

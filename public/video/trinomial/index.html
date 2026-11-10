@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Παραγοντοποίηση τριωνύμου — βίντεο</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Noto+Sans:wght@400;600&display=swap">
+<style>
+:root{--bg:#14202B;--card:#1B2A38;--line:#3A4E62;--fg:#fff;--muted:#B4C2D0;--sun:#FACC15}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);font-family:"Noto Sans",system-ui,sans-serif;
+  display:flex;flex-direction:column;align-items:center}
+main{width:100%;max-width:1200px;box-sizing:border-box;padding:24px 16px 40px}
+h1{font-family:"Comfortaa","Noto Sans",sans-serif;font-size:clamp(22px,3.4vw,34px);margin:8px 0 6px}
+p{color:var(--muted);margin:0 0 18px;font-size:17px;line-height:1.5}
+video{display:block;width:100%;aspect-ratio:16/9;background:#000;border-radius:14px;border:1px solid var(--line)}
+.row{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;margin-top:16px;font-size:17px}
+.voices{display:inline-flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.voices button{font:inherit;color:var(--fg);background:transparent;border:0;min-height:44px;padding:0 18px;cursor:pointer}
+.voices button[aria-pressed="true"]{background:var(--sun);color:#14202B;font-weight:600}
+.voices button:focus-visible{outline:3px solid #fff;outline-offset:-3px}
+#note{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Παραγοντοποίηση τριωνύμου</h1>
+  <p>x² + 7x + 10 = (x + 2)(x + 5) — βήμα βήμα, σε 72 δευτερόλεπτα.</p>
+  <video id="v" src="paragontopoiisi-trionymou.mp4" controls playsinline preload="metadata"></video>
+  <div class="row">
+    <span id="vl">Φωνή:</span>
+    <span class="voices" role="group" aria-labelledby="vl">
+      <button type="button" data-v="m" aria-pressed="true">Νέστορας</button>
+      <button type="button" data-v="f" aria-pressed="false">Αθηνά</button>
+    </span>
+    <span id="note" role="status"></span>
+  </div>
+</main>
+<script>
+'use strict';
+/* The film itself is silent (subtitles are in the picture). The narration is one clip per subtitle,
+   spoken by the server (/api/video-tts) and started 0.3 s into its subtitle window. */
+const LEAD = 0.3, STARTS = [0, 8, 17, 22, 27, 38, 46, 56, 65].map(s => s + LEAD);
+const video = document.getElementById('v'), note = document.getElementById('note');
+let voice = 'm', clips = [], unlocked = false, failed = false;
+
+function load() {
+  for (const a of clips) { a.pause(); a.removeAttribute('src'); a.load(); }
+  failed = false; unlocked = false; note.textContent = '';
+  clips = STARTS.map((_, i) => {
+    const a = new Audio(); a.preload = 'auto';
+    a.addEventListener('error', () => {
+      if (failed) return;
+      failed = true; note.textContent = 'Η εκφώνηση δεν είναι διαθέσιμη τώρα — το βίντεο έχει υπότιτλους.';
+    });
+    a.src = `/api/video-tts?id=trinomial&line=${i}&v=${voice}`;
+    return a;
+  });
+}
+
+/* keep each clip in step with the picture: play, pause, seek, speed and volume all follow the video */
+function sync() {
+  const t = video.currentTime;
+  clips.forEach((a, i) => {
+    const off = t - STARTS[i], next = i + 1 < STARTS.length ? STARTS[i + 1] : Infinity;
+    const on = unlocked && !video.paused && !video.ended && off >= 0 && t < next && !(a.duration && off >= a.duration);
+    if (!on) { if (!a.paused) a.pause(); return; }
+    a.volume = video.volume; a.muted = video.muted; a.playbackRate = video.playbackRate;
+    if (a.paused) { a.currentTime = off; a.play().catch(() => {}); }
+    else if (Math.abs(a.currentTime - off) > 0.3) a.currentTime = off;
+  });
+}
+function tick() { sync(); if (!video.paused && !video.ended) requestAnimationFrame(tick); }
+
+video.addEventListener('play', async () => {
+  if (!unlocked) {                       // phones only let audio start from a tap: touch every clip once now
+    await Promise.all(clips.map(a => { a.muted = true; return a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {}); }));
+    unlocked = true;
+  }
+  tick();
+});
+for (const ev of ['pause', 'seeked', 'ended', 'ratechange', 'volumechange']) video.addEventListener(ev, sync);
+
+for (const b of document.querySelectorAll('.voices button')) b.addEventListener('click', () => {
+  if (b.dataset.v === voice) return;
+  voice = b.dataset.v;
+  for (const o of document.querySelectorAll('.voices button')) o.setAttribute('aria-pressed', String(o === b));
+  const playing = !video.paused;
+  video.pause(); load(); if (playing) video.play();
+});
+load();
+</script>
+</body>
+</html>

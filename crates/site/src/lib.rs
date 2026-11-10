@@ -11,6 +11,7 @@
 //! | POST /api/check                | checks answers, returns feedback / solution       |
 //! | GET  /api/lesson?cat&seed&kind | narrated step lesson: kind=instr or kind=method   |
 //! | GET  /api/tts?…&step&k&v       | one lesson sentence as speech (Azure, cached)     |
+//! | GET  /api/video-tts?id&line&v  | one narration line of a `/video/` page as speech  |
 //! | POST /api/teacher/login        | PIN → signed session token                        |
 //! | GET  /api/teacher/resources    | printable test and its solutions (token required) |
 //! | GET  /api/teacher/worksheet    | worksheet with answer key (token required)        |
@@ -214,15 +215,52 @@ fn lesson_sentence(q: &std::collections::HashMap<String, String>) -> Option<Stri
     lesson.steps.get(step)?.parts.get(k).cloned()
 }
 
+/// Narration of the explainer videos under `/video/`: (video id, one sentence per subtitle).
+/// Fixed text, for the same reason as the lessons; maths is written the way it is read aloud.
+const VIDEO_LINES: &[(&str, &[&str])] = &[(
+    "trinomial",
+    &[
+        "Πώς γράφουμε το χι στο τετράγωνο, συν επτά χι, συν δέκα, σαν γινόμενο; Πάμε βήμα βήμα.",
+        "Ψάχνουμε δύο αριθμούς: γινόμενο δέκα, και άθροισμα επτά.",
+        "Ένα και δέκα: άθροισμα έντεκα. Όχι.",
+        "Δύο και πέντε: άθροισμα επτά. Αυτοί είναι!",
+        "Όλα τα κομμάτια φτιάχνουν ένα ορθογώνιο. Πλευρές: χι συν δύο, και χι συν πέντε.",
+        "Άρα: χι στο τετράγωνο, συν επτά χι, συν δέκα, ισούται με: χι συν δύο, επί χι συν πέντε.",
+        "Έλεγχος: πολλαπλασιάζουμε και ξαναβρίσκουμε την αρχική παράσταση. Σωστό!",
+        "Προσοχή! Αν ο τελευταίος αριθμός είναι αρνητικός, ο ένας είναι θετικός και ο άλλος αρνητικός.",
+        "Θυμήσου: γινόμενο, άθροισμα, ζευγάρι, παρενθέσεις. Τώρα δοκίμασε εσύ!",
+    ],
+)];
+
+fn video_line(q: &std::collections::HashMap<String, String>) -> Option<&'static str> {
+    let id = q.get("id")?;
+    let line: usize = q.get("line")?.parse().ok()?;
+    let (_, lines) = VIDEO_LINES.iter().find(|(v, _)| v == id)?;
+    lines.get(line).copied()
+}
+
 async fn tts(req: Request, env: &Env) -> Result<Response> {
-    let Some((key, region)) = azure(env) else {
-        return bad("δεν υπάρχει φυσική φωνή", 503);
-    };
     let q = query(&req)?;
     let Some(text) = lesson_sentence(&q) else {
         return bad("δεν βρέθηκε", 404);
     };
-    let voice = azure_voice(q.get("v").map(String::as_str).unwrap_or("m"));
+    speak(&req, env, &text, q.get("v").map(String::as_str)).await
+}
+
+async fn video_tts(req: Request, env: &Env) -> Result<Response> {
+    let q = query(&req)?;
+    let Some(text) = video_line(&q) else {
+        return bad("δεν βρέθηκε", 404);
+    };
+    speak(&req, env, text, q.get("v").map(String::as_str)).await
+}
+
+/// One sentence as MP3 from the Azure neural voice, cached for good.
+async fn speak(req: &Request, env: &Env, text: &str, v: Option<&str>) -> Result<Response> {
+    let Some((key, region)) = azure(env) else {
+        return bad("δεν υπάρχει φυσική φωνή", 503);
+    };
+    let voice = azure_voice(v.unwrap_or("m"));
     // Same sentence + voice → same audio, whatever question it came from.
     let digest = hex(&<Sha256 as sha2::Digest>::digest(
         format!("{voice}|{text}").as_bytes(),
@@ -247,7 +285,7 @@ async fn tts(req: Request, env: &Env) -> Result<Response> {
     }
     let ssml = format!(
         "<speak version='1.0' xml:lang='el-GR'><voice name='{voice}'><prosody rate='-6%'>{}</prosody></voice></speak>",
-        xml_escape(&text)
+        xml_escape(text)
     );
     let headers = Headers::new();
     headers.set("Ocp-Apim-Subscription-Key", &key)?;
@@ -337,6 +375,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             }
         })
         .get_async("/api/tts", |req, ctx| async move { tts(req, &ctx.env).await })
+        .get_async("/api/video-tts", |req, ctx| async move { video_tts(req, &ctx.env).await })
         .post_async("/api/check", |mut req, _| async move {
             let Ok(body) = req.json::<CheckReq>().await else { return bad("μη έγκυρο αίτημα", 400) };
             match generate(&body.cat, body.seed) {

@@ -1,5 +1,5 @@
 // Renders index.html frame by frame (1920×1080, 30 fps, 72 s) and encodes an MP4 with ffmpeg.
-//   node render.mjs                 → paragontopoiisi-trionymou.mp4 next to this file
+//   node render.mjs                 → public/video/trinomial/paragontopoiisi-trionymou.mp4
 //   node render.mjs --stills 4,12.5 → PNG stills at those seconds (for checking), into ./stills
 // Needs: playwright (with Chromium) and ffmpeg on PATH. FRAMES_DIR overrides the temp frame folder.
 import { createRequire } from 'node:module';
@@ -13,7 +13,7 @@ const { chromium } = createRequire(import.meta.url)('playwright');   // require(
 const here = dirname(fileURLToPath(import.meta.url));
 const FPS = 30, DURATION = 72, TOTAL = FPS * DURATION, WORKERS = 4;
 const url = pathToFileURL(join(here, 'index.html')).href + '?render';
-const out = join(here, 'paragontopoiisi-trionymou.mp4');
+const out = join(here, '../../public/video/trinomial/paragontopoiisi-trionymou.mp4');   // served by the site
 
 const browser = await chromium.launch();
 const open = async () => {

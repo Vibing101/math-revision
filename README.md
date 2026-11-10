@@ -48,6 +48,7 @@
 crates/quiz-core   γεννήτριες ερωτήσεων, έλεγχος απαντήσεων, ανάλυση λαθών (καθαρή Rust, με tests)
 crates/site        ο Worker: /api/* και το τμήμα «Για τον εκπαιδευτικό»
 public/            η σελίδα (HTML/CSS/JS), σερβίρεται από Workers Assets
+video/             πηγαίος κώδικας των βίντεο-εξηγήσεων (η σελίδα τους: public/video/…)
 wrangler.jsonc     ρυθμίσεις Cloudflare (custom domain, όριο προσπαθειών PIN)
 ```
 
