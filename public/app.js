@@ -69,7 +69,7 @@ function newBadges() { const got = []; for (const b of BADGES) if (!S.badges.inc
 let Q = null, round = null, qn = 0, hintsShown = 0, tries = 0, done = false, busy = false;
 function go(hash) { round = null; if (location.hash === hash || (!location.hash && hash === '#')) route(); else location.hash = hash; }
 function route() {
-  round = null;
+  round = null; stopSpeak();
   const h = location.hash;
   if (!S.grade || h === '#grade') return renderGrade();
   if (h === '#year') return renderYear();
@@ -145,16 +145,29 @@ function renderChapter(id) {
 /* ---------- theory: public/theory/<chapter>.json, short cards with worked examples ---------- */
 const THEORY = {};
 const CARD_LABEL = { goal: 'Τι θα μάθουμε', def: 'Ορισμός', rule: 'Κανόνας', note: 'Να θυμάσαι', warn: 'Πρόσεξε' };
+const TPKEY = 'theory-prog-v1';
+let TP = {};
+try { TP = JSON.parse(localStorage.getItem(TPKEY)) || {}; } catch (e) { /* ignore */ }
+const saveTP = () => { try { localStorage.setItem(TPKEY, JSON.stringify(TP)); } catch (e) { /* ignore */ } };
+const tprog = (id) => TP[id] || (TP[id] = { pos: 0, sec: {} });
+const RATE = [
+  ['2', 'Το κατάλαβα', 'Μπράβο! Δοκίμασε ασκήσεις για να το εδραιώσεις.'],
+  ['1', 'Θέλω να το ξαναδώ', 'Εντάξει. Ξαναδιάβασε τα παραδείγματα, βήμα βήμα, και μετά δοκίμασε ασκήσεις. Μπορείς να ζητήσεις υπόδειξη όποτε χρειάζεται.'],
+  ['0', 'Δεν το κατάλαβα ακόμα', 'Δεν πειράζει. Έτσι ξέρουμε τι να επαναλάβουμε. Ξεκίνα από τον ορισμό και το πρώτο παράδειγμα και πάρε ένα βήμα τη φορά. Αν χρειάζεται, ρώτησε τον/την καθηγητή/τρια.'],
+];
 function theoryCard(c) {
+  const listen = canSpeak ? `<button class="btn ghost sm listen" type="button" aria-pressed="false">${I('play')}<span>Άκουσε</span></button>` : '';
   if (c.type === 'example') {
     const steps = (c.steps || []).map((x, i) => `<li${i ? ' hidden' : ''}>${x}</li>`).join('');
     return `<article class="tcard ex"><span class="tlabel">Παράδειγμα</span><div class="tbody">${c.html}</div>
-      ${steps ? `<ol class="tsteps">${steps}</ol><button class="btn ghost sm tnext">Δείξε το επόμενο βήμα</button>` : ''}</article>`;
+      ${steps ? `<ol class="tsteps">${steps}</ol><button class="btn ghost sm tnext" type="button">Δείξε το επόμενο βήμα</button>` : ''}${listen}</article>`;
   }
-  return `<article class="tcard ${c.type}"><span class="tlabel">${CARD_LABEL[c.type] || ''}${c.title ? ': ' + esc(c.title) : ''}</span><div class="tbody">${c.html}</div></article>`;
+  return `<article class="tcard ${c.type}"><span class="tlabel">${CARD_LABEL[c.type] || ''}${c.title ? ': ' + esc(c.title) : ''}</span><div class="tbody">${c.html}</div>${listen}</article>`;
 }
+function theoryDone(id) { const th = THEORY[id], p = tprog(id); return th ? th.sections.filter((_, i) => p.sec[i] === '2').length : 0; }
 async function renderTheory(id) {
   const ch = CHAPTERS.find((c) => c.id === id);
+  stopSpeak();
   app.innerHTML = `<div class="top">${backBtn('Κεφάλαιο')}${statsChips()}</div><header class="hero"><span class="muted">Κεφάλαιο ${ch.number} · Θεωρία</span><h1>${esc(ch.title)}</h1></header><p class="loading">Φόρτωση…</p>`;
   $('#home').onclick = () => go('#ch-' + id);
   let th = THEORY[id];
@@ -162,18 +175,50 @@ async function renderTheory(id) {
     try { const r = await fetch(`/theory/${id}.json`); if (!r.ok) throw new Error(); th = THEORY[id] = await r.json(); }
     catch (e) { app.querySelector('.loading').outerHTML = '<div class="card"><p style="margin:0">Η θεωρία αυτού του κεφαλαίου θα προστεθεί σύντομα.</p></div>'; return; }
   }
-  app.querySelector('.loading').outerHTML = `<nav class="toc card">${th.sections.map((s, i) => `<a href="#th-${id}" data-s="${i}">${esc(s.title)}</a>`).join('')}</nav>` +
-    th.sections.map((s, i) => `<section class="tsec" id="ts-${i}"><h2>${esc(s.title)}</h2>${s.cards.map(theoryCard).join('')}
-      ${s.practice ? `<div class="row"><button class="btn" data-cat="${s.practice}">${I('next')}Δοκίμασε ασκήσεις</button></div>` : ''}</section>`).join('');
-  app.querySelectorAll('.toc a').forEach((a) => (a.onclick = (e) => { e.preventDefault(); $('#ts-' + a.dataset.s).scrollIntoView({ behavior: 'smooth' }); }));
+  const P = tprog(id), one = !!UIP.one;
+  /* units: a card (with its section heading when it opens a section), and one self-check per section */
+  let n = 0;
+  const secHTML = th.sections.map((s, i) => {
+    const cards = s.cards.map((c, k) => `<div class="tu" data-u="${n++}">${k === 0 ? `<h2>${esc(s.title)}</h2>` : ''}${theoryCard(c)}</div>`).join('');
+    const rated = P.sec[i];
+    const check = `<div class="tu" data-u="${n++}"><div class="tcard check" data-sec="${i}"><span class="tlabel">Έλεγχος</span>
+      <p><b>Πώς σου φάνηκε η ενότητα «${esc(s.title)}»;</b></p>
+      <div class="rate" role="group" aria-label="Πώς σου φάνηκε η ενότητα">${RATE.map(([v, t]) => `<button class="btn ghost sm" type="button" data-r="${v}" aria-pressed="${rated === v}">${t}</button>`).join('')}</div>
+      <p class="rmsg muted" aria-live="polite">${rated ? RATE.find((r) => r[0] === rated)[2] : ''}</p>
+      ${s.practice ? `<div class="row"><button class="btn" type="button" data-cat="${s.practice}">${I('next')}Δοκίμασε ασκήσεις</button></div>` : ''}</div></div>`;
+    return `<section class="tsec" id="ts-${i}">${cards}${check}</section>`;
+  }).join('');
+  const total = n;
+  app.querySelector('.loading').outerHTML = `<div class="tbar"><div class="row"><span class="cnt" id="t-cnt" aria-live="polite"></span>${one ? '' : `<span class="cnt">Ενότητες που κατάλαβες: ${theoryDone(id)} από ${th.sections.length}</span>`}</div><div class="bar"><i id="t-bar"></i></div></div>
+    <nav class="toc card" aria-label="Ενότητες">${th.sections.map((s, i) => `<a href="#th-${id}" data-s="${i}"${P.sec[i] === '2' ? ' class="done"' : ''}>${esc(s.title)}</a>`).join('')}</nav>
+    <div id="t-body" class="${one ? 'one' : ''}">${secHTML}</div>
+    ${one ? `<div class="row tnav"><button class="btn ghost" id="t-prev" type="button">${I('back')}Πίσω</button><button class="btn big-btn" id="t-next" type="button">Επόμενο${I('next')}</button></div>` : ''}`;
+  const units = [...app.querySelectorAll('.tu')];
+  const show = (pos, scroll) => {
+    pos = Math.max(0, Math.min(total - 1, pos)); P.pos = pos; saveTP();
+    if (one) units.forEach((u, i) => { u.hidden = i > pos; u.classList.toggle('cur', i === pos); });
+    $('#t-cnt').textContent = `Βήμα ${pos + 1} από ${total}`;
+    $('#t-bar').style.width = `${Math.round((pos + 1) / total * 100)}%`;
+    if (one) { const nx = $('#t-next'), pv = $('#t-prev'); nx.disabled = pos >= total - 1; pv.disabled = pos <= 0; if (scroll) setTimeout(() => units[pos].scrollIntoView({ behavior: UIP.calm ? 'auto' : 'smooth', block: 'center' }), 60); }
+  };
+  if (one) { $('#t-next').onclick = () => { stopSpeak(); show(P.pos + 1, true); }; $('#t-prev').onclick = () => { stopSpeak(); show(P.pos - 1, true); }; show(Math.min(P.pos, total - 1), P.pos > 0); }
+  else { show(0, false); $('#t-bar').style.width = `${Math.round(theoryDone(id) / th.sections.length * 100)}%`; $('#t-cnt').textContent = 'Διάβασε με τη σειρά, όσο γρήγορα θέλεις.'; }
+  app.querySelectorAll('.toc a').forEach((a) => (a.onclick = (e) => { e.preventDefault(); const i = +a.dataset.s; if (one) { const u = units.find((x) => x.querySelector(`#ts-${i}`) || x.closest(`#ts-${i}`)); show(units.indexOf(u), true); } else $('#ts-' + i).scrollIntoView({ behavior: UIP.calm ? 'auto' : 'smooth' }); }));
   app.querySelectorAll('.tnext').forEach((b) => (b.onclick = () => {
     const li = b.previousElementSibling.querySelector('li[hidden]');
     if (li) li.hidden = false;
     if (!b.previousElementSibling.querySelector('li[hidden]')) b.remove();
   }));
+  app.querySelectorAll('.listen').forEach((b) => (b.onclick = () => speakCard(b, b.closest('.tcard'))));
+  app.querySelectorAll('.tcard.check').forEach((box) => box.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => {
+    const i = +box.dataset.sec; P.sec[i] = b.dataset.r; saveTP();
+    box.querySelectorAll('[data-r]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    box.querySelector('.rmsg').textContent = RATE.find((r) => r[0] === b.dataset.r)[2];
+    app.querySelector(`.toc a[data-s="${i}"]`).classList.toggle('done', b.dataset.r === '2');
+    if (!one) { const c = app.querySelector('.tbar .cnt:last-child'); if (c) c.textContent = `Ενότητες που κατάλαβες: ${theoryDone(id)} από ${th.sections.length}`; $('#t-bar').style.width = `${Math.round(theoryDone(id) / th.sections.length * 100)}%`; }
+  })));
   app.querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { round = null; start(b.dataset.cat); }));
 }
-
 function renderYear(msg) {
   const saved = (S.years || {})[S.grade] || (S.grade === 'a' && S.year) || null;
   const sel = (saved && saved.chapters) || GCH().map((c) => c.id);
@@ -336,7 +381,7 @@ async function check() {
     const bonus = S.streak % 3 === 0 ? 5 : 0;
     S.points += pts + bonus; if (round) round.ok++; roundRecord(true);
     const nb = newBadges(); save();
-    fb.innerHTML = `<div class="fb ok"><span class="h">${pick(['Σωστό!', 'Μπράβο!', 'Τέλεια!', 'Εξαιρετικά!'])} +${pts} πόντοι${bonus ? ` · μπόνους σερί +${bonus}` : ''}</span>${nb.map((b) => `<span class="nb">${I('award')}Νέο παράσημο: <b>${b}</b></span>`).join('')}<div class="sol">${r.solution}</div></div>`;
+    fb.innerHTML = `<div class="fb ok"><span class="h">${pick(['Σωστό!', 'Μπράβο!', 'Τέλεια!', 'Εξαιρετικά!'])}${UIP.calm ? '' : ` +${pts} πόντοι${bonus ? ` · μπόνους σερί +${bonus}` : ''}`}</span>${nb.map((b) => `<span class="nb">${I('award')}Νέο παράσημο: <b>${b}</b></span>`).join('')}<div class="sol">${r.solution}</div></div>`;
     celebrate(pts + bonus); finishUI();
   } else {
     for (const d of r.diag) if (d.tag) S.tags[d.tag] = (S.tags[d.tag] || 0) + 1;
