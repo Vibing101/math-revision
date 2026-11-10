@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       voice:
-        description: Φωνή (m = Νέστορας, f = Αθηνά)
-        default: m
+        description: Φωνή (e = Ελένη, m = Νέστορας, f = Αθηνά)
+        default: e
 
 permissions:
   contents: write
@@ -22,7 +22,7 @@ jobs:
       - name: Fetch the narration and mix
         working-directory: video/trinomial-factoring
         env:
-          VOICE: ${{ inputs.voice || 'm' }}
+          VOICE: ${{ inputs.voice || 'e' }}
         run: node voiceover.mjs
       - uses: actions/upload-artifact@v4
         with:
@@ -34,5 +34,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add video/trinomial-factoring/paragontopoiisi-trionymou-voice.mp4
           git diff --cached --quiet && exit 0
-          git commit -m "Video: Greek voice-over (Azure neural voice)"
+          git commit -m "Video: Greek voice-over"
           git push origin "HEAD:${GITHUB_REF_NAME}"

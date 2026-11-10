@@ -31,7 +31,8 @@ video{display:block;width:100%;aspect-ratio:16/9;background:#000;border-radius:1
   <div class="row">
     <span id="vl">Φωνή:</span>
     <span class="voices" role="group" aria-labelledby="vl">
-      <button type="button" data-v="m" aria-pressed="true">Νέστορας</button>
+      <button type="button" data-v="e" aria-pressed="true">Ελένη</button>
+      <button type="button" data-v="m" aria-pressed="false">Νέστορας</button>
       <button type="button" data-v="f" aria-pressed="false">Αθηνά</button>
     </span>
     <span id="note" role="status"></span>
@@ -43,7 +44,7 @@ video{display:block;width:100%;aspect-ratio:16/9;background:#000;border-radius:1
    spoken by the server (/api/video-tts) and started 0.3 s into its subtitle window. */
 const LEAD = 0.3, STARTS = [0, 8, 17, 22, 27, 38, 46, 56, 65].map(s => s + LEAD);
 const video = document.getElementById('v'), note = document.getElementById('note');
-let voice = 'm', clips = [], unlocked = false, failed = false;
+let voice = 'e', clips = [], unlocked = false, failed = false;
 
 function load() {
   for (const a of clips) { a.pause(); a.removeAttribute('src'); a.load(); }

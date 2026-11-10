@@ -1,6 +1,6 @@
 // Makes a copy of the video with the Greek voice-over mixed in: paragontopoiisi-trionymou-voice.mp4.
-//   node voiceover.mjs            (VOICE=f for Αθηνά instead of Νέστορας, SITE=… for another host)
-// The narration clips come from the site's own /api/video-tts (the Azure key lives only in the Worker),
+//   node voiceover.mjs            (VOICE=e Ελένη (default), m Νέστορας, f Αθηνά; SITE=… for another host)
+// The narration clips come from the site's own /api/video-tts (the speech keys live only in the Worker),
 // so this works once that endpoint is deployed. Each line starts 0.3 s into its subtitle window,
 // exactly as on the page /video/trinomial/. Needs ffmpeg/ffprobe on PATH.
 import { spawnSync } from 'node:child_process';
@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const site = (process.env.SITE || 'https://maths.savvy-des.com').replace(/\/$/, ''), v = process.env.VOICE === 'f' ? 'f' : 'm';
+const site = (process.env.SITE || 'https://maths.savvy-des.com').replace(/\/$/, ''), v = ['e', 'm', 'f'].includes(process.env.VOICE) ? process.env.VOICE : 'e';
 const LEAD = 0.3, WINDOWS = [[0, 8], [8, 17], [17, 22], [22, 27], [27, 38], [38, 46], [46, 56], [56, 65], [65, 72]];
 
 const tmp = mkdtempSync(join(tmpdir(), 'voice-'));
