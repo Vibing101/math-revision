@@ -17,6 +17,7 @@ pub mod gen_sets;
 pub mod lesson;
 pub mod mk;
 pub mod model;
+pub mod theory;
 pub mod util;
 
 pub use model::{answer_json, answer_text, check, public, CheckResult, PublicQuestion, Question};
