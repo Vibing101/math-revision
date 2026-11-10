@@ -158,12 +158,32 @@ const RATE = [
   ['1', 'Θέλω να το ξαναδώ', 'Εντάξει. Ξαναδιάβασε τα παραδείγματα, βήμα βήμα, και μετά δοκίμασε ασκήσεις. Μπορείς να ζητήσεις υπόδειξη όποτε χρειάζεται.'],
   ['0', 'Δεν το κατάλαβα ακόμα', 'Δεν πειράζει. Έτσι ξέρουμε τι να επαναλάβουμε. Ξεκίνα από τον ορισμό και το πρώτο παράδειγμα και πάρε ένα βήμα τη φορά. Αν χρειάζεται, ρώτησε τον/την καθηγητή/τρια.'],
 ];
-function theoryCard(c) {
+/* Backward fading (Barton 6.6): after the full example come similar problems where the pupil does the last
+   step(s) and then checks. Data: example.fade = [{ html, steps }, ...] with new numbers; the first rung hides the
+   last step, the next ones hide all steps but the first. Progress is kept in tprog(id).fade[key]. */
+const fadeHide = (n, r) => (r === 0 ? 1 : Math.max(1, n - 1));
+function fadeHTML(c, key, done) {
+  const rungs = c.fade || [];
+  if (!rungs.length) return '';
+  const body = rungs.map((u, r) => {
+    const n = u.steps.length, hide = Math.min(fadeHide(n, r), n - 1), solved = r < done;
+    const lis = u.steps.map((x, i) => (i >= n - hide && !solved ? `<li class="hid" hidden>${x}</li>` : `<li>${x}</li>`)).join('');
+    return `<article class="tcard fx${solved ? ' solved' : ''}" data-rung="${r}"${r > done ? ' hidden' : ''}>
+      <span class="tlabel">Δοκίμασε εσύ ${r + 1} από ${rungs.length}${r === 0 ? ': το τελευταίο βήμα είναι δικό σου' : ': κάνε μόνος/η τα βήματα μετά το πρώτο'}</span>
+      <div class="tbody">${u.html}</div><ol class="tsteps">${lis}</ol>
+      ${solved ? '<p class="fmsg">✓ Το έκανες σωστά.</p>' : `<p class="fslot">Η σειρά σου: κάνε ${hide > 1 ? `τα ${hide} τελευταία βήματα` : 'το τελευταίο βήμα'} στο τετράδιό σου. Μετά πάτα «Δες τη λύση».</p>
+      <div class="row"><button class="btn ghost sm" type="button" data-f="show">Δες τη λύση</button></div>
+      <div class="row" hidden data-f-check><button class="btn sm" type="button" data-f="ok">Το έκανα σωστά</button><button class="btn ghost sm" type="button" data-f="no">Δεν μου βγήκε</button></div>
+      <p class="fmsg" aria-live="polite"></p>`}</article>`;
+  }).join('');
+  return `<div class="fade" data-fk="${key}" data-total="${rungs.length}"${done === 0 && (c.steps || []).length > 1 ? ' hidden' : ''}><p class="flabel">Τώρα δοκίμασε εσύ${done >= rungs.length ? ' · ✓ ολοκληρώθηκε' : ''}</p>${body}</div>`;
+}
+function theoryCard(c, key, fdone) {
   const listen = canSpeak ? `<button class="btn ghost sm listen" type="button" aria-pressed="false">${I('play')}<span>Άκουσε</span></button>` : '';
   if (c.type === 'example') {
     const steps = (c.steps || []).map((x, i) => `<li${i ? ' hidden' : ''}>${x}</li>`).join('');
     return `<article class="tcard ex"><span class="tlabel">Παράδειγμα</span><div class="tbody">${c.html}</div>
-      ${steps ? `<ol class="tsteps">${steps}</ol><button class="btn ghost sm tnext" type="button">Δείξε το επόμενο βήμα</button>` : ''}${listen}</article>`;
+      ${steps ? `<ol class="tsteps">${steps}</ol><button class="btn ghost sm tnext" type="button">Δείξε το επόμενο βήμα</button>` : ''}${listen}</article>${fadeHTML(c, key, fdone)}`;
   }
   return `<article class="tcard ${c.type}"><span class="tlabel">${CARD_LABEL[c.type] || ''}${c.title ? ': ' + esc(c.title) : ''}</span><div class="tbody">${c.html}</div>${listen}</article>`;
 }
@@ -182,7 +202,7 @@ async function renderTheory(id) {
   /* units: a card (with its section heading when it opens a section), and one self-check per section */
   let n = 0;
   const secHTML = th.sections.map((s, i) => {
-    const cards = s.cards.map((c, k) => `<div class="tu" data-u="${n++}">${k === 0 ? `<h2>${esc(s.title)}</h2>` : ''}${theoryCard(c)}</div>`).join('');
+    const cards = s.cards.map((c, k) => { const fk = `${i}:${k}`; return `<div class="tu" data-u="${n++}">${k === 0 ? `<h2>${esc(s.title)}</h2>` : ''}${theoryCard(c, fk, (P.fade || {})[fk] || 0)}</div>`; }).join('');
     const rated = P.sec[i];
     const check = `<div class="tu" data-u="${n++}"><div class="tcard check" data-sec="${i}"><span class="tlabel">Έλεγχος</span>
       <p><b>Πώς σου φάνηκε η ενότητα «${esc(s.title)}»;</b></p>
@@ -210,7 +230,26 @@ async function renderTheory(id) {
   app.querySelectorAll('.tnext').forEach((b) => (b.onclick = () => {
     const li = b.previousElementSibling.querySelector('li[hidden]');
     if (li) li.hidden = false;
-    if (!b.previousElementSibling.querySelector('li[hidden]')) b.remove();
+    if (!b.previousElementSibling.querySelector('li[hidden]')) { const fd = b.closest('.tu').querySelector('.fade'); b.remove(); if (fd) fd.hidden = false; }
+  }));
+  app.querySelectorAll('.fade').forEach((box) => box.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-f]'); if (!b) return;
+    const rung = b.closest('.fx'), r = +rung.dataset.rung, total = +box.dataset.total, msg = rung.querySelector('.fmsg');
+    const next = box.querySelector(`.fx[data-rung="${r + 1}"]`);
+    const save = (n) => { P.fade = P.fade || {}; P.fade[box.dataset.fk] = Math.max(P.fade[box.dataset.fk] || 0, n); saveTP(); };
+    if (b.dataset.f === 'show') {
+      rung.querySelectorAll('li.hid').forEach((li) => (li.hidden = false)); rung.querySelector('.fslot').hidden = true; b.parentElement.hidden = true;
+      rung.querySelector('[data-f-check]').hidden = false; msg.textContent = 'Σύγκρινε με ό,τι έκανες. Βγήκε το ίδιο;';
+    } else if (b.dataset.f === 'ok') {
+      rung.querySelector('[data-f-check]').hidden = true; rung.classList.add('solved'); save(r + 1);
+      msg.textContent = next ? '✓ Μπράβο! Πάμε σε ένα παρόμοιο, με λιγότερη βοήθεια.' : '✓ Μπράβο! Το έκανες μόνος/η, από την αρχή μέχρι το τέλος.';
+      if (next) { next.hidden = false; setTimeout(() => next.scrollIntoView({ behavior: UIP.calm ? 'auto' : 'smooth', block: 'nearest' }), 60); }
+      else box.querySelector('.flabel').textContent = 'Τώρα δοκίμασε εσύ · ✓ ολοκληρώθηκε';
+    } else if (b.dataset.f === 'no') {
+      rung.querySelector('[data-f-check]').hidden = true;
+      msg.textContent = 'Δεν πειράζει, έτσι μαθαίνουμε. Ξαναδιάβασε το παράδειγμα και τη λύση, βήμα βήμα.' + (next ? ' Μετά δοκίμασε το επόμενο.' : ' Μετά δοκίμασε ασκήσεις.');
+      if (next) next.hidden = false;
+    }
   }));
   app.querySelectorAll('.listen').forEach((b) => (b.onclick = () => speakCard(b, b.closest('.tcard'))));
   app.querySelectorAll('.tcard.check').forEach((box) => box.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => {
