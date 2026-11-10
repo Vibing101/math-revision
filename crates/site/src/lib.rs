@@ -201,6 +201,18 @@ fn azure(env: &Env) -> Option<(String, String)> {
     ))
 }
 
+/// The natural voices this Worker can speak with, best first (the page's default is the first).
+fn natural_voices(env: &Env) -> Vec<&'static str> {
+    let mut v = Vec::new();
+    if secret(env, "SPEECHIFY_API_KEY").is_some() {
+        v.extend(["e", "k"]);
+    }
+    if azure(env).is_some() {
+        v.extend(["m", "f"]);
+    }
+    v
+}
+
 fn xml_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -446,8 +458,9 @@ struct LoginReq {
 async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     Router::new()
         .get("/api/categories", |_, ctx| {
+            let voices = natural_voices(&ctx.env);
             let tags: serde_json::Map<String, Value> = TAGS.iter().map(|(k, v)| (k.to_string(), Value::from(*v))).collect();
-            json_res(&json!({ "chapters": CHAPTERS, "categories": CATEGORIES, "tags": tags, "method_cats": quiz_core::lesson::METHOD_CATS, "tts": azure(&ctx.env).is_some() }), 200)
+            json_res(&json!({ "chapters": CHAPTERS, "categories": CATEGORIES, "tags": tags, "method_cats": quiz_core::lesson::METHOD_CATS, "tts": !voices.is_empty(), "tts_voices": voices }), 200)
         })
         .get("/api/question", |req, _| {
             let q = query(&req)?;

@@ -38,7 +38,7 @@ let S = fresh();
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s.points === 'number') S = Object.assign(fresh(), s); } catch (e) { /* private mode */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } };
 const cs = (id) => S.cats[id] || (S.cats[id] = { att: 0, ok: 0, first: 0 });
-let CATS = [], TAGS = {}, CHAPTERS = [], METHOD_CATS = [], NATURAL_TTS = false;
+let CATS = [], TAGS = {}, CHAPTERS = [], METHOD_CATS = [], NATURAL_TTS = false, NATURAL = [];
 const chCats = (ch) => CATS.filter((c) => c.chapter === ch);
 const GRADES = [{ id: 'a', name: 'Α΄ Γυμνασίου' }, { id: 'g', name: 'Γ΄ Γυμνασίου' }];
 const gradeName = () => (GRADES.find((g) => g.id === S.grade) || GRADES[0]).name;
@@ -443,9 +443,18 @@ function worksheetHTML(ws) {
    Each lesson is a list of steps {title, show, say}. The step is shown on screen,
    `say` is read by the device's own voice (Web Speech API) and shown as subtitles. */
 const LV = { lesson: null, kind: 'instr', i: 0, k: 0, playing: false, token: 0, timer: 0, opener: null, voice: null, audio: null, prefs: { rate: 1, auto: true } };
-/** Natural (Azure) voices, spoken by the server. */
-const NATURAL = [{ id: 'az:m', name: 'Νέστορας (φυσική φωνή)' }, { id: 'az:f', name: 'Αθηνά (φυσική φωνή)' }];
-const naturalVoice = () => (NATURAL_TTS && !(LV.prefs.voice && !LV.prefs.voice.startsWith('az:')) ? LV.prefs.voice || 'az:m' : null);
+/** Natural voices, spoken by the server: Ελένη / Κώστας (Speechify), Νέστορας / Αθηνά (Azure).
+    The server says which ones it has; the first of them is the default. */
+const NATURAL_NAMES = { e: ['sp:e', 'Ελένη'], k: ['sp:k', 'Κώστας'], m: ['az:m', 'Νέστορας'], f: ['az:f', 'Αθηνά'] };
+const setNatural = (codes) => { NATURAL = codes.filter((c) => NATURAL_NAMES[c]).map((c) => ({ id: NATURAL_NAMES[c][0], name: `${NATURAL_NAMES[c][1]} (φυσική φωνή)` })); };
+const isNatural = (id) => /^(az|sp):/.test(id || '');
+/** The natural voice in use, or null when the pupil chose a voice of the device. */
+function naturalVoice() {
+  if (!NATURAL_TTS || !NATURAL.length) return null;
+  const saved = LV.prefs.voice;
+  if (saved && !isNatural(saved)) return null;
+  return NATURAL.some((v) => v.id === saved) ? saved : NATURAL[0].id;
+}
 const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 try { Object.assign(LV.prefs, JSON.parse(localStorage.getItem('lesson-prefs')) || {}); } catch (e) { /* ignore */ }
 const saveLV = () => { try { localStorage.setItem('lesson-prefs', JSON.stringify(LV.prefs)); } catch (e) { /* ignore */ } };
@@ -578,7 +587,7 @@ function lvSpeak() {
   lvHalt();
   const my = LV.token;
   const parts = LV.lesson.steps[LV.i].parts;
-  const ttsUrl = (step, k) => `/api/tts?cat=${encodeURIComponent(Q.cat)}&seed=${Q.seed}&kind=${LV.kind}&step=${step}&k=${k}&v=${naturalVoice() === 'az:f' ? 'f' : 'm'}`;
+  const ttsUrl = (step, k) => `/api/tts?cat=${encodeURIComponent(Q.cat)}&seed=${Q.seed}&kind=${LV.kind}&step=${step}&k=${k}&v=${naturalVoice().slice(3)}`;
   const rate = LV.prefs.rate || 1;
   const after = () => {
     if (my !== LV.token) return;
@@ -625,7 +634,7 @@ function lvSpeak() {
 (async function boot() {
   try {
     const r = await api('/api/categories');
-    CATS = r.categories; TAGS = r.tags; CHAPTERS = r.chapters; METHOD_CATS = r.method_cats || []; NATURAL_TTS = !!r.tts;
+    CATS = r.categories; TAGS = r.tags; CHAPTERS = r.chapters; METHOD_CATS = r.method_cats || []; NATURAL_TTS = !!r.tts; setNatural(r.tts_voices || (r.tts ? ['m', 'f'] : []));
     route();
   } catch (e) {
     app.innerHTML = netError(e) + '<div class="row" style="margin-top:12px"><button class="btn" onclick="location.reload()">Δοκίμασε ξανά</button></div>';
