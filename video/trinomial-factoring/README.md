@@ -18,3 +18,5 @@ x² + 7x + 10 = (x + 2)(x + 5), για μαθητές Γ΄ Γυμνασίου μ
 - `subtitles.el.srt` — οι χρόνοι των υποτίτλων, για τον συγχρονισμό της εκφώνησης.
 - `render.mjs` — ξαναφτιάχνει το MP4: `node render.mjs` (θέλει Playwright/Chromium και ffmpeg).
 - `fonts/` — Comfortaa Bold (SIL OFL).
+- `paragontopoiisi-trionymou-voice.mp4` — το ίδιο βίντεο με ελληνική εκφώνηση (Azure, Νέστορας).
+- `voiceover.mjs` — φτιάχνει την εκφώνηση και τη μιξάρει στο βίντεο. Τρέχει στο GitHub Actions (`Video voice-over`), όπου το κλειδί Azure είναι secret του αποθετηρίου.
