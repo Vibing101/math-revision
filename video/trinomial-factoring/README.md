@@ -14,10 +14,10 @@ x² + 7x + 10 = (x + 2)(x + 5), για μαθητές Γ΄ Γυμνασίου μ
 | 7 | 0:56–1:05 | Προσοχή στα πρόσημα |
 | 8 | 1:05–1:12 | Ανακεφαλαίωση |
 
-Σελίδα (χωρίς σύνδεσμο από την αρχική): **https://maths.savvy-des.com/video/trinomial/** — το βίντεο με εκφώνηση από τις φωνές Azure (Νέστορας / Αθηνά).
+Σελίδα (χωρίς σύνδεσμο από την αρχική): **https://maths.savvy-des.com/video/trinomial/** — το βίντεο με εκφώνηση: Ελένη / Κώστας (Speechify), Νέστορας / Αθηνά (Azure).
 
 - `../../public/video/trinomial/paragontopoiisi-trionymou.mp4` — το βίντεο (χωρίς ήχο)· `index.html` εκεί είναι η σελίδα, που παίζει την εκφώνηση συγχρονισμένα.
-- Η εκφώνηση: `GET /api/video-tts?id=trinomial&line=0…8&v=m|f` (Worker· οι προτάσεις είναι το `VIDEO_LINES` στο `crates/site/src/lib.rs`, το κλειδί Azure μένει στον Worker).
+- Η εκφώνηση: `GET /api/video-tts?id=trinomial&line=0…8&v=e|k|m|f` (Worker· οι προτάσεις είναι το `VIDEO_LINES` στο `crates/site/src/lib.rs`· τα κλειδιά `SPEECHIFY_API_KEY` και Azure μένουν στον Worker· αν το Speechify δεν απαντήσει, μιλά η αντίστοιχη φωνή Azure).
 - `index.html` — όλη η κίνηση ως συνάρτηση του χρόνου `render(t)`. Άνοιξέ το σε browser για προεπισκόπηση (`?t=24.5` παγώνει σε μια στιγμή).
 - `subtitles.el.srt` — οι χρόνοι των υποτίτλων.
 - `render.mjs` — ξαναφτιάχνει το MP4: `node render.mjs` (θέλει Playwright/Chromium και ffmpeg).

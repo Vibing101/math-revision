@@ -18,7 +18,9 @@
 //!
 //! The teacher PIN lives in the `TEACHER_PIN` secret, never in the page.
 //! Natural voices need the `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` secrets;
-//! without them the page uses the device's own voice.
+//! without them the page uses the device's own voice. `SPEECHIFY_API_KEY` adds the
+//! Speechify voices Ελένη (`v=e`) and Κώστας (`v=k`).
+//! Every spoken sentence is stored in the `TTS_AUDIO` KV namespace, so it is paid for once.
 
 use hmac::{Hmac, Mac};
 use quiz_core::{
@@ -182,16 +184,21 @@ fn azure_voice(v: &str) -> &'static str {
     }
 }
 
+/// A secret (or plain variable) of the Worker, trimmed; `None` when missing or empty.
+fn secret(env: &Env, k: &str) -> Option<String> {
+    env.secret(k)
+        .ok()
+        .map(|s| s.to_string())
+        .or_else(|| env.var(k).ok().map(|s| s.to_string()))
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
 fn azure(env: &Env) -> Option<(String, String)> {
-    let get = |k: &str| {
-        env.secret(k)
-            .ok()
-            .map(|s| s.to_string())
-            .or_else(|| env.var(k).ok().map(|s| s.to_string()))
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-    };
-    Some((get("AZURE_SPEECH_KEY")?, get("AZURE_SPEECH_REGION")?))
+    Some((
+        secret(env, "AZURE_SPEECH_KEY")?,
+        secret(env, "AZURE_SPEECH_REGION")?,
+    ))
 }
 
 fn xml_escape(s: &str) -> String {
@@ -255,12 +262,97 @@ async fn video_tts(req: Request, env: &Env) -> Result<Response> {
     speak(&req, env, text, q.get("v").map(String::as_str)).await
 }
 
-/// One sentence as MP3 from the Azure neural voice, cached for good.
+/// Speechify voices (need the `SPEECHIFY_API_KEY` secret): `e` Ελένη, `k` Κώστας.
+/// Each has an Azure stand-in of the same gender.
+fn speechify_voice(v: &str) -> Option<(&'static str, &'static str)> {
+    match v {
+        "e" => Some(("eleni", "f")),
+        "k" => Some(("kostas", "m")),
+        _ => None,
+    }
+}
+const SPEECHIFY_MODEL: &str = "simba-3.5";
+
+async fn post(url: &str, headers: Headers, body: String) -> Option<Response> {
+    let mut init = RequestInit::new();
+    init.with_method(Method::Post)
+        .with_headers(headers)
+        .with_body(Some(body.into()));
+    match Fetch::Request(Request::new_with_init(url, &init).ok()?)
+        .send()
+        .await
+    {
+        Ok(r) if r.status_code() == 200 => Some(r),
+        Ok(r) => {
+            console_error!("tts {url}: status {}", r.status_code());
+            None
+        }
+        Err(e) => {
+            console_error!("tts {url}: {e}");
+            None
+        }
+    }
+}
+
+async fn azure_audio(key: &str, region: &str, voice: &str, text: &str) -> Option<Vec<u8>> {
+    let ssml = format!(
+        "<speak version='1.0' xml:lang='el-GR'><voice name='{voice}'><prosody rate='-6%'>{}</prosody></voice></speak>",
+        xml_escape(text)
+    );
+    let headers = Headers::new();
+    headers.set("Ocp-Apim-Subscription-Key", key).ok()?;
+    headers.set("Content-Type", "application/ssml+xml").ok()?;
+    headers
+        .set(
+            "X-Microsoft-OutputFormat",
+            "audio-24khz-48kbitrate-mono-mp3",
+        )
+        .ok()?;
+    headers.set("User-Agent", "maths-savvy-des").ok()?;
+    let url = format!("https://{region}.tts.speech.microsoft.com/cognitiveservices/v1");
+    post(&url, headers, ssml).await?.bytes().await.ok()
+}
+
+/// Speechify answers with JSON; the MP3 is Base64 in `audio_data`.
+async fn speechify_audio(key: &str, voice: &str, text: &str) -> Option<Vec<u8>> {
+    use base64::Engine;
+    let body = json!({
+        "input": text,
+        "voice_id": voice,
+        "model": SPEECHIFY_MODEL,
+        "audio_format": "mp3",
+        "options": { "text_normalization": true },
+    });
+    let headers = Headers::new();
+    headers
+        .set("Authorization", &format!("Bearer {key}"))
+        .ok()?;
+    headers.set("Content-Type", "application/json").ok()?;
+    let url = "https://api.sws.speechify.com/v1/audio/speech";
+    let mut res = post(url, headers, body.to_string()).await?;
+    let data: Value = res.json().await.ok()?;
+    base64::engine::general_purpose::STANDARD
+        .decode(data.get("audio_data")?.as_str()?)
+        .ok()
+        .filter(|a| !a.is_empty())
+}
+
+/// One sentence as MP3, cached. `v`: `m` Νέστορας / `f` Αθηνά (Azure), `e` Ελένη / `k` Κώστας
+/// (Speechify). When Speechify cannot answer (no key, monthly cap reached) the Azure voice of
+/// the same gender speaks instead.
 async fn speak(req: &Request, env: &Env, text: &str, v: Option<&str>) -> Result<Response> {
-    let Some((key, region)) = azure(env) else {
+    let v = v.unwrap_or("m");
+    let sp_voice = speechify_voice(v);
+    let speechify = sp_voice.and_then(|_| secret(env, "SPEECHIFY_API_KEY"));
+    let az = azure(env);
+    if speechify.is_none() && az.is_none() {
         return bad("δεν υπάρχει φυσική φωνή", 503);
+    }
+    let az_voice = azure_voice(sp_voice.map_or(v, |(_, stand_in)| stand_in));
+    let voice = match (sp_voice, &speechify) {
+        (Some((id, _)), Some(_)) => format!("speechify-{id}-{SPEECHIFY_MODEL}"),
+        _ => az_voice.to_string(),
     };
-    let voice = azure_voice(v.unwrap_or("m"));
     // Same sentence + voice → same audio, whatever question it came from.
     let digest = hex(&<Sha256 as sha2::Digest>::digest(
         format!("{voice}|{text}").as_bytes(),
@@ -269,6 +361,15 @@ async fn speak(req: &Request, env: &Env, text: &str, v: Option<&str>) -> Result<
     let cache = Cache::default();
     if let Ok(Some(hit)) = cache.get(&cache_key, false).await {
         return Ok(hit);
+    }
+    // Spoken once, kept for good: the edge cache above forgets, the KV store does not.
+    let store = env.kv("TTS_AUDIO").ok();
+    if let Some(kv) = &store {
+        if let Ok(Some(audio)) = kv.get(&digest).bytes().await {
+            let mut out = mp3(audio)?;
+            let _ = cache.put(&cache_key, out.cloned()?).await;
+            return Ok(out);
+        }
     }
     if let Ok(limiter) = env.rate_limiter("TTS_LIMITER") {
         let ip = req
@@ -283,43 +384,47 @@ async fn speak(req: &Request, env: &Env, text: &str, v: Option<&str>) -> Result<
             }
         }
     }
-    let ssml = format!(
-        "<speak version='1.0' xml:lang='el-GR'><voice name='{voice}'><prosody rate='-6%'>{}</prosody></voice></speak>",
-        xml_escape(text)
-    );
-    let headers = Headers::new();
-    headers.set("Ocp-Apim-Subscription-Key", &key)?;
-    headers.set("Content-Type", "application/ssml+xml")?;
-    headers.set(
-        "X-Microsoft-OutputFormat",
-        "audio-24khz-48kbitrate-mono-mp3",
-    )?;
-    headers.set("User-Agent", "maths-savvy-des")?;
-    let mut init = RequestInit::new();
-    init.with_method(Method::Post)
-        .with_headers(headers)
-        .with_body(Some(ssml.into()));
-    let url = format!("https://{region}.tts.speech.microsoft.com/cognitiveservices/v1");
-    let mut res = match Fetch::Request(Request::new_with_init(&url, &init)?)
-        .send()
-        .await
-    {
-        Ok(r) if r.status_code() == 200 => r,
-        Ok(r) => {
-            console_error!("azure tts: status {}", r.status_code());
-            return bad("η φυσική φωνή δεν είναι διαθέσιμη", 502);
+    let mut audio = None;
+    if let (Some((id, _)), Some(key)) = (sp_voice, &speechify) {
+        audio = speechify_audio(key, id, text).await;
+    }
+    // A stand-in for Speechify is not kept: the chosen voice should come back as soon as it can.
+    let keep = audio.is_some() || speechify.is_none();
+    if audio.is_none() {
+        if let Some((key, region)) = &az {
+            audio = azure_audio(key, region, az_voice, text).await;
         }
-        Err(e) => {
-            console_error!("azure tts: {e}");
-            return bad("η φυσική φωνή δεν είναι διαθέσιμη", 502);
-        }
+    }
+    let Some(audio) = audio else {
+        return bad("η φυσική φωνή δεν είναι διαθέσιμη", 502);
     };
-    let audio = res.bytes().await?;
+    if !keep {
+        let mut out = Response::from_bytes(audio)?;
+        out.headers_mut().set("content-type", "audio/mpeg")?;
+        out.headers_mut().set("cache-control", "no-store")?;
+        return Ok(out);
+    }
+    if let Some(kv) = &store {
+        match kv.put_bytes(&digest, &audio) {
+            Ok(put) => {
+                if let Err(e) = put.execute().await {
+                    console_error!("tts store: {e}");
+                }
+            }
+            Err(e) => console_error!("tts store: {e}"),
+        }
+    }
+    let mut out = mp3(audio)?;
+    let _ = cache.put(&cache_key, out.cloned()?).await;
+    Ok(out)
+}
+
+/// A finished clip: the same sentence and voice never change, so browsers may keep it.
+fn mp3(audio: Vec<u8>) -> Result<Response> {
     let mut out = Response::from_bytes(audio)?;
     out.headers_mut().set("content-type", "audio/mpeg")?;
     out.headers_mut()
         .set("cache-control", "public, max-age=31536000, immutable")?;
-    let _ = cache.put(&cache_key, out.cloned()?).await;
     Ok(out)
 }
 
