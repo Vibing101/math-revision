@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>Παραγοντοποίηση τριωνύμου — x² + 7x + 10</title>
+<style>
+@font-face{font-family:"Comfortaa";font-weight:700;font-style:normal;
+  src:url(fonts/comfortaa-greek-700-normal.woff2) format("woff2");unicode-range:U+0370-03FF}
+@font-face{font-family:"Comfortaa";font-weight:700;font-style:normal;
+  src:url(fonts/comfortaa-latin-700-normal.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;
+  background-color:#14202B;
+  background-image:linear-gradient(#1C2B38 1px,transparent 1px),linear-gradient(90deg,#1C2B38 1px,transparent 1px);
+  background-size:40px 40px;
+  font-family:"Comfortaa",sans-serif;font-weight:700;color:#fff}
+.a{position:absolute;left:0;top:0;transform-origin:0 0;white-space:pre;line-height:1.25;visibility:hidden}
+.ghost{position:absolute;width:1920px;text-align:center;white-space:pre;line-height:1.25;transform:translateY(-50%);visibility:hidden}
+.ghost span{display:inline-block}
+.b{color:#3B82F6}.g{color:#22C55E}.o{color:#F59E0B}.r{color:#FCA5A5}.y{color:#FACC15}.dim{color:#8FA3B8}
+.nb{white-space:nowrap}
+svg{display:block}
+
+/* tiles */
+.tile{position:absolute;left:0;top:0;visibility:hidden;filter:drop-shadow(0 6px 8px rgba(0,0,0,.45))}
+.ti{width:100%;height:100%;box-sizing:border-box;border-radius:8px;border:4px solid}
+.ti.tb{background:#3B82F6;border-color:#93C5FD}
+.ti.tg{background:#22C55E;border-color:#86EFAC}
+.ti.to{background:#F59E0B;border-color:#FCD34D}
+
+/* cards */
+.card{box-sizing:border-box;background:#1B2A38;border:3px solid #3A4E62;border-radius:24px;
+  display:flex;align-items:center;justify-content:center}
+.card.info{width:400px;height:210px;flex-direction:column;gap:2px}
+.card.info .cw{font-size:44px}
+.card.info .cv{font-size:64px}
+.card.trial{width:1200px;height:150px;font-size:64px;gap:34px}
+.card .hid{opacity:0}
+.ov{position:absolute;inset:-3px;border-radius:24px;opacity:0;pointer-events:none}
+.ov.bad{border:5px solid #EF4444}
+.ov.good{border:5px solid #22C55E;box-shadow:0 0 34px rgba(34,197,94,.65)}
+.pr{display:inline-flex;align-items:center;gap:34px}
+.mk{display:inline-block}
+.box{box-sizing:border-box;width:160px;height:160px;border:4px dashed #8FA3B8;border-radius:20px}
+.box .ov{border-radius:20px;inset:-4px}
+.chip{width:84px;height:84px;border-radius:20px;color:#14202B;font-size:54px;line-height:84px;text-align:center}
+.final{font-size:72px;padding:26px 60px;background:#1B2A38;border:4px solid #FACC15;border-radius:28px;
+  display:flex;align-items:center;gap:28px}
+
+/* progress */
+#prog{position:absolute;left:24px;right:24px;top:14px;height:12px;display:flex;gap:8px}
+.seg{flex:1;height:100%;border-radius:6px;background:#2A3B4C;position:relative;overflow:hidden}
+.seg i{position:absolute;left:0;top:0;height:100%;width:100%}
+.seg .fy{background:#FACC15;width:0}
+.seg .fg{background:#22C55E;opacity:0}
+.seg .sh{width:260px;opacity:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent)}
+#step{position:absolute;right:28px;top:38px;font-size:28px;color:#D5DEE7}
+
+/* subtitles */
+.sub{position:absolute;left:0;width:1920px;bottom:28px;text-align:center;visibility:hidden}
+.sub span.p{display:inline-block;max-width:1480px;padding:18px 44px;border-radius:22px;background:rgba(0,0,0,.7);
+  font-size:40px;line-height:1.35;text-wrap:balance}
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg id="arcs" width="1920" height="1080" style="position:absolute;left:0;top:0"></svg>
+  <div id="prog"></div>
+  <div id="step"></div>
+</div>
+<script>
+'use strict';
+/* ───────── timing ───────── */
+const DURATION = 72, FPS = 30;
+const B = [0, 8, 17, 27, 38, 46, 56, 65, 72];          // scene boundaries (s)
+const SUBS = [
+  [0, 8,  'Πώς γράφουμε το <span class="nb">x² + 7x + 10</span> σαν <span class="y">γινόμενο</span>; Πάμε βήμα βήμα.'],
+  [8, 17, 'Ψάχνουμε δύο αριθμούς: <span class="y nb">γινόμενο 10</span> και <span class="y nb">άθροισμα 7</span>.'],
+  [17, 22, '1 και 10: άθροισμα 11. <span class="y">Όχι.</span>'],
+  [22, 27, '2 και 5: άθροισμα 7. <span class="y">Αυτοί είναι!</span>'],
+  [27, 38, 'Όλα τα κομμάτια φτιάχνουν <span class="y">ένα ορθογώνιο</span>. Πλευρές: <span class="y nb">x + 2</span> και <span class="y nb">x + 5</span>.'],
+  [38, 46, 'Άρα: <span class="nb">x² + 7x + 10</span> = <span class="y nb">(x + 2)(x + 5)</span>'],
+  [46, 56, '<span class="y">Έλεγχος:</span> πολλαπλασιάζουμε και ξαναβρίσκουμε την αρχική παράσταση. Σωστό!'],
+  [56, 65, '<span class="y">Προσοχή!</span> Αν ο τελευταίος αριθμός είναι αρνητικός, ο ένας είναι <span class="y">θετικός</span> και ο άλλος <span class="y">αρνητικός</span>.'],
+  [65, 72, 'Θυμήσου: <span class="y">γινόμενο, άθροισμα, ζευγάρι, παρενθέσεις.</span> Τώρα δοκίμασε εσύ!'],
+];
+
+/* ───────── helpers ───────── */
+const stage = document.getElementById('stage');
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const ease = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+const lin = (t, t0, d) => clamp((t - t0) / d);
+const tw = (t, t0, d = .5) => ease(lin(t, t0, d));
+const lerp = (a, b, u) => a + (b - a) * u;
+const pulse = (t, t0, d = .6) => 1 + .08 * Math.sin(Math.PI * lin(t, t0, d));     // 1 → 1.08 → 1, once
+const popS = (t, t0) => { const u = lin(t, t0, .45); return u < .65 ? lerp(.5, 1.08, ease(u / .65)) : lerp(1.08, 1, ease((u - .65) / .35)); };
+const popO = (t, t0) => lin(t, t0, .18);
+const fadeOut = (t, at) => 1 - lin(t, at - .2, .4);     // 400 ms cross-fade centred on a scene boundary
+const fadeIn = (t, at) => lin(t, at - .2, .4);
+
+const actors = [], rows = [];
+function mk(html, fs, cls = '') {
+  const e = document.createElement('div');
+  e.className = 'a ' + cls; e.style.fontSize = fs + 'px'; e.innerHTML = html;
+  stage.appendChild(e); actors.push(e); return e;
+}
+/* place actor: top-left (x,y), opacity o, scale s (about top-left), cs = extra scale about its centre */
+function put(e, x, y, o = 1, s = 1, cs = 1) {
+  if (o <= .002) { e.style.visibility = 'hidden'; return; }
+  e.style.visibility = 'visible'; e.style.opacity = o;
+  const X = x - e._w * s * (cs - 1) / 2, Y = y - e._h * s * (cs - 1) / 2;
+  e.style.transform = `translate(${X.toFixed(2)}px,${Y.toFixed(2)}px) scale(${(s * cs).toFixed(4)})`;
+}
+const putR = (it, o = 1, dx = 0, dy = 0, cs = 1) => put(it.el, it.r.x + dx, it.r.y + dy, o, 1, cs);
+function glow(e, g) {
+  e.style.textShadow = g > .01 ? `0 0 14px rgba(250,204,21,${g.toFixed(3)}),0 0 36px rgba(250,204,21,${(g * .8).toFixed(3)})` : 'none';
+}
+/* a centred row of text pieces; each piece gets a hidden layout span (for measuring) and a movable actor */
+let auto = 0;
+function row(spec, fs, cx, cy) {
+  const g = document.createElement('div');
+  g.className = 'ghost'; g.style.fontSize = fs + 'px'; g.style.top = cy + 'px'; g.style.left = (cx - 960) + 'px';
+  const out = { _keys: [] };
+  for (const [k0, h, c] of spec) {
+    const k = k0 || ('_' + (auto++));
+    const s = document.createElement('span'); s.innerHTML = h; s.className = c || ''; g.appendChild(s);
+    out[k] = { gs: s, el: mk(h, fs, c || '') }; out._keys.push(k);
+  }
+  stage.appendChild(g); rows.push(out); return out;
+}
+const items = R => R._keys.map(k => R[k]);
+/* scale a whole row about (gcx,gcy), then shift */
+function putGroup(R, gcx, gcy, S, dx, dy, o) {
+  for (const it of items(R)) put(it.el, gcx + (it.r.x - gcx) * S + dx, gcy + (it.r.y - gcy) * S + dy, o, S);
+}
+const rel = el => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; };
+
+/* icons (drawn, so they never depend on a font) */
+const tick = s => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>`;
+const cross = s => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+const arrowR = `<svg width="84" height="40" viewBox="0 0 84 40" fill="none" stroke="#D5DEE7" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20h70M58 6l18 14-18 14"/></svg>`;
+const warn = `<svg width="56" height="56" viewBox="0 0 24 24"><path d="M12 3.2L22 20.5H2z" fill="#FACC15" stroke="#FACC15" stroke-width="2" stroke-linejoin="round"/><path d="M12 9.5v5" stroke="#14202B" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.3" fill="#14202B"/></svg>`;
+const pencil = `<svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/><path d="M15 5l4 4"/></svg>`;
+
+/* ───────── progress bar ───────── */
+const prog = document.getElementById('prog'), stepEl = document.getElementById('step'), segs = [];
+for (let i = 0; i < 8; i++) {
+  const s = document.createElement('div'); s.className = 'seg';
+  s.innerHTML = '<i class="fy"></i><i class="fg"></i><i class="sh"></i>'; prog.appendChild(s);
+  segs.push({ el: s, fy: s.children[0], fg: s.children[1], sh: s.children[2] });
+}
+/* ───────── subtitles ───────── */
+const subEls = SUBS.map(([a, b, h]) => {
+  const d = document.createElement('div'); d.className = 'sub'; d.innerHTML = `<span class="p">${h}</span>`;
+  stage.appendChild(d); return d;
+});
+
+/* ───────── tiles (shared by scenes 1, 4, 5) ───────── */
+const RX = 720, RY = 360;                                 // rectangle top-left; unit 60, x = 300
+const tiles = [];
+function tile(kind, w, h, U, T) {
+  const e = document.createElement('div'); e.className = 'tile'; e.style.width = w + 'px'; e.style.height = h + 'px';
+  e.innerHTML = `<div class="ti t${kind}"></div>`; stage.appendChild(e);
+  tiles.push({ el: e, inner: e.firstChild, w, h, U, T });
+}
+// untidy cluster [cx, cy, rot]
+const U_G = [[1010, 430, 5], [1060, 520, -3], [990, 610, 4], [1400, 450, -6], [1430, 560, 3], [270, 470, 6], [250, 580, -5]];
+const U_O = [[180, 700, 8], [290, 765, -6], [400, 720, 4], [860, 740, -8], [960, 795, 5], [1070, 720, -3], [1180, 785, 7], [1290, 690, -5], [1400, 765, 4], [1520, 700, -7]];
+tile('b', 300, 300, [620, 560, -4], [RX + 150, RY + 150, 0]);
+for (let i = 0; i < 5; i++) tile('g', 300, 60, U_G[i], [RX + 330 + 60 * i, RY + 150, 90]);      // 5 vertical strips
+for (let j = 0; j < 2; j++) tile('g', 300, 60, U_G[5 + j], [RX + 150, RY + 330 + 60 * j, 0]);   // 2 horizontal strips
+for (let k = 0; k < 10; k++) tile('o', 60, 60, U_O[k], [RX + 330 + 60 * (k % 5), RY + 330 + 60 * Math.floor(k / 5), 0]);
+function putTile(T, cx, cy, rot, o, s = 1) {
+  if (o <= .002) { T.el.style.visibility = 'hidden'; return; }
+  T.el.style.visibility = 'visible'; T.el.style.opacity = o;
+  T.el.style.transform = `translate(${(cx - T.w / 2).toFixed(2)}px,${(cy - T.h / 2).toFixed(2)}px) scale(${s.toFixed(4)})`;
+  T.inner.style.transform = `rotate(${rot.toFixed(2)}deg)`;
+}
+
+/* ───────── actors ───────── */
+const P = ' + ';
+// scenes 1–3: main equation (rests at the top, 64 px; shown ×1.5 = 96 px in the centre during scene 1)
+const E1 = row([['x2', 'x²', 'b'], [, P], ['n7', '7', 'g'], ['x', 'x', 'g'], [, P], ['n10', '10', 'o']], 64, 960, 170);
+
+// scenes 2–3 and 7: info cards, boxes
+const infoCard = (word, op, val, cls, hidden) => mk(`<div class="cw">${word}</div><div class="cv">${op} = <span class="slot ${cls}${hidden ? ' hid' : ''}">${val}</span></div>`, 64, 'card info');
+const CARD_L = { x: 250, y: 295 }, CARD_R = { x: 1270, y: 295 }, BOX1 = { x: 780, y: 320 }, BOX2 = { x: 980, y: 320 };
+const cL = infoCard('γινόμενο', '×', '10', 'o', true), cR = infoCard('άθροισμα', '+', '7', 'g', true);
+const mkBox = () => mk('<div class="ov good"></div>', 64, 'box');
+const box1 = mkBox(), box2 = mkBox(), q1 = mk('?', 80, 'dim'), q2 = mk('?', 80, 'dim');
+const v10 = mk('10', 64, 'o'), v7 = mk('7', 64, 'g');
+// scene 3: trial cards
+const TRIAL = { x: 360, y: 615 };
+const tA = mk(`<span class="pl">1 × 10 = <span class="o">10</span></span><span class="pr">${arrowR}<span>1 + 10 = 11</span></span><span class="mk">${cross(72)}</span><div class="ov bad"></div>`, 64, 'card trial');
+const tB = mk(`<span class="pl">2 × 5 = <span class="o">10</span></span><span class="pr">${arrowR}<span><span class="s2">2</span> + <span class="s5">5</span> = <span class="g">7</span></span></span><span class="mk">${tick(72)}</span><div class="ov good"></div>`, 64, 'card trial');
+const n2 = mk('2', 96), n5 = mk('5', 96);
+
+// scenes 4–5: brackets, labels, answer line
+const brTop = mk(`<svg width="612" height="40" fill="none" stroke-width="6" stroke-linecap="round"><path d="M6 20H306M6 8V32" stroke="#22C55E"/><path d="M306 20H606M606 8V32" stroke="#F59E0B"/><path d="M306 8V32" stroke="#fff"/></svg>`, 64);
+const brLeft = mk(`<svg width="40" height="432" fill="none" stroke-width="6" stroke-linecap="round"><path d="M20 6V306M8 6H32" stroke="#22C55E"/><path d="M20 306V426M8 426H32" stroke="#F59E0B"/><path d="M8 306H32" stroke="#fff"/></svg>`, 64);
+const FA = '<span class="g">x</span> + <span class="o">2</span>', FB = '<span class="g">x</span> + <span class="o">5</span>';
+const labTop = row([['l', FB]], 64, RX + 300, RY - 98), labLeft = row([['l', FA]], 64, RX - 160, RY + 210);
+const L5 = row([['x2', 'x²', 'b'], ['p1', P], ['s7', '7x', 'g'], ['p2', P], ['n10', '10', 'o'], ['eq', ' = '],
+                ['o1', '('], ['fa', FA], ['o2', ')('], ['fb', FB], ['o3', ')']], 96, 960, 165);
+const L5_LEFT = ['x2', 'p1', 's7', 'p2', 'n10', 'eq'], L5_RIGHT = ['o1', 'fa', 'o2', 'fb', 'o3'];
+
+// scene 6: check
+const F6 = row([[, '('], ['x1', 'x', 'g'], [, P], ['n2', '2', 'o'], [, ')('], ['x2', 'x', 'g'], [, P], ['n5', '5', 'o'], [, ')']], 96, 960, 250);
+const RA = row([['x2', 'x²', 'b'], ['pA', P], ['a5', '5x', 'g'], ['pB', P], ['a2', '2x', 'g'], ['pC', P], ['n10', '10', 'o']], 96, 960, 560);
+const RB = row([['eq', '= '], ['x2', 'x²', 'b'], ['pA', P], ['s7', '7x', 'g'], ['pC', P], ['n10', '10', 'o'], ['ck', '<span style="display:inline-block;width:130px"></span>']], 96, 960, 560);
+const ck6 = mk(tick(96), 64);
+const arcSvg = document.getElementById('arcs'), arcs = [];
+
+// scene 7: signs
+const E7 = row([['x2', 'x²', 'b'], [, P], ['s3', '3x', 'g'], [, ' '], ['m', '− 10', 'o']], 64, 960, 170);
+const warnEl = mk(warn, 64);
+const c7L = infoCard('γινόμενο', '×', '−10', 'o', false), c7R = infoCard('άθροισμα', '+', '3', 'g', false);
+const box71 = mkBox(), box72 = mkBox(), q71 = mk('?', 80, 'dim'), q72 = mk('?', 80, 'dim');
+const m5 = mk('5', 96), mNeg2 = mk('−2', 96, 'r'), ck71 = mk(tick(52), 64), ck72 = mk(tick(52), 64);
+const L7 = row([[, '= ('], [, 'x', 'g'], [, P], [, '5', 'o'], [, ')('], [, 'x', 'g'], [, ' '], [, '−', 'r'], [, ' '], [, '2', 'o'], [, ')']], 96, 960, 700);
+
+// scene 8: recap
+const LIST = [
+  ['×', '#F59E0B', 'Γινόμενο × = <span class="o">c</span>'],
+  ['+', '#22C55E', 'Άθροισμα + = <span class="g">b</span>'],
+  ['( )', '#3B82F6', 'Γράφω (<span class="g">x</span> + <span class="o">p</span>)(<span class="g">x</span> + <span class="o">q</span>)'],
+].map(([sym, col, html], i) => ({
+  chip: mk(`<div class="chip" style="background:${col};${sym.length > 1 ? 'font-size:44px;' : 'font-size:72px;'}">${sym}</div>`, 64),
+  text: mk(html, 64), ck: mk(tick(72), 64), y: 240 + i * 130, t0: 65.5 + i * .8,
+}));
+const finalCard = mk(`<span>Τώρα εσύ!</span>${pencil}`, 72, 'final');
+
+/* ───────── measure (after fonts are ready) ───────── */
+function measure() {
+  for (const e of actors) { const r = rel(e); e._w = r.w; e._h = r.h; }
+  for (const R of rows) for (const it of items(R)) it.r = rel(it.gs);
+  const slot = (card, pos) => { const r = rel(card.querySelector('.slot')); return { x: r.x + pos.x, y: r.y + pos.y, w: r.w, h: r.h }; };
+  cL._slot = slot(cL, CARD_L); cR._slot = slot(cR, CARD_R);
+  const inB = sel => { const r = rel(tB.querySelector(sel)); return { x: r.x + TRIAL.x, y: r.y + TRIAL.y, w: r.w, h: r.h }; };
+  tB._s2 = inB('.s2'); tB._s5 = inB('.s5');
+
+  // scene 6 arcs: source → target, above (−1) or below (+1) the expression
+  const mid = it => it.r.x + it.r.w / 2;
+  const defs = [['x1', 'x2', -1, 62, '#3B82F6', 10], ['x1', 'n5', -1, 108, '#22C55E', -10],
+                ['n2', 'x2', 1, 62, '#22C55E', 10], ['n2', 'n5', 1, 108, '#F59E0B', -10]];
+  defs.forEach(([a, b, dir, peak, col, off], i) => {
+    const top = it => it.r.y + (it === F6.x1 || it === F6.x2 ? 36 : 20), bot = it => it.r.y + 108;
+    const x0 = mid(F6[a]) + off, x1 = mid(F6[b]) + (i === 0 || i === 2 ? (dir < 0 ? -8 : 8) : (dir < 0 ? 8 : -8)) * 0;
+    const y0 = dir < 0 ? top(F6[a]) : bot(F6[a]), y1 = dir < 0 ? top(F6[b]) : bot(F6[b]);
+    const cx = (x0 + x1) / 2, cy = (dir < 0 ? Math.min(y0, y1) : Math.max(y0, y1)) + dir * peak * 2;
+    const ang = Math.atan2(y1 - cy, x1 - cx) * 180 / Math.PI;
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.innerHTML = `<path d="M${x0} ${y0}Q${cx} ${cy} ${x1} ${y1}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round"/>` +
+      `<path d="M-20 -11L0 0L-20 11" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" transform="translate(${x1} ${y1}) rotate(${ang})"/>`;
+    arcSvg.appendChild(g);
+    const p = g.firstChild, len = p.getTotalLength();
+    p.style.strokeDasharray = len;
+    arcs.push({ g, p, head: g.lastChild, len, a: F6[a], b: F6[b], t0: 47 + i * .8 });
+  });
+}
+
+/* ───────── the film: everything is a pure function of t (seconds) ───────── */
+function render(t) {
+  t = clamp(t, 0, DURATION);
+  const scene = Math.min(7, B.findIndex((b, i) => t < B[i + 1]) < 0 ? 7 : B.findIndex((b, i) => t < B[i + 1]));
+
+  /* progress bar */
+  const DONE8 = 68.0;                                              // scene 8: bar completes before the shimmer
+  segs.forEach((s, i) => {
+    const end = i === 7 ? DONE8 : B[i + 1];
+    s.fy.style.width = (clamp((t - B[i]) / (end - B[i])) * 100).toFixed(2) + '%';
+    s.fg.style.opacity = lin(t, end, .4);
+    const u = lin(t, 68.4, 1.1), r = s.el._r;                        // one gentle shimmer sweep
+    s.sh.style.opacity = u > 0 && u < 1 ? .9 * Math.sin(Math.PI * u) : 0;
+    if (r) s.sh.style.transform = `translateX(${(lerp(-300, 1920, ease(u)) - r.x).toFixed(1)}px)`;
+  });
+  stepEl.textContent = `Βήμα ${scene + 1} / 8`;
+
+  /* subtitles */
+  SUBS.forEach(([a, b], i) => {
+    const o = lin(t, a, .2) * (b === DURATION ? 1 : 1 - lin(t, b - .2, .2));   // out, then in: two texts never overlap
+    subEls[i].style.visibility = o > .002 ? 'visible' : 'hidden'; subEls[i].style.opacity = o;
+  });
+
+  /* tiles: scene 1 pop-in, scene 4 glide into the rectangle, held through scene 5 */
+  {
+    const early = t < 20;
+    const starts = [27.8, 28.9, 28.96, 29.02, 29.08, 29.14, 30.3, 30.36, 31.4];
+    const rectPulse = pulse(t, 33.0), RCX = RX + 300, RCY = RY + 210;
+    tiles.forEach((T, i) => {
+      if (early) {
+        const t0 = 1.8 + i * .08;
+        putTile(T, T.U[0], T.U[1], T.U[2], popO(t, t0) * fadeOut(t, 8), popS(t, t0));
+      } else {
+        const t0 = i < 8 ? starts[i] : starts[8] + (i - 8) * .04;
+        const u = tw(t, t0, .6);
+        const cx = lerp(T.U[0], T.T[0], u), cy = lerp(T.U[1], T.T[1], u);
+        putTile(T, RCX + (cx - RCX) * rectPulse, RCY + (cy - RCY) * rectPulse, lerp(T.U[2], T.T[2], u),
+                fadeIn(t, 27) * fadeOut(t, 46), rectPulse);
+      }
+    });
+  }
+
+  /* scenes 1–3: main equation */
+  {
+    const o = lin(t, .3, .6) * fadeOut(t, 27), u = tw(t, 8.3, .6);
+    putGroup(E1, 960, 170, lerp(1.5, 1, u), 0, lerp(60, 0, u), o);
+    glow(E1.n10.el, tw(t, 10.6, .4) * (1 - tw(t, 12.6, .5)));
+    glow(E1.n7.el, tw(t, 13.0, .4) * (1 - tw(t, 15.0, .5)));
+  }
+
+  /* scenes 2–3: what we look for, then try the pairs */
+  {
+    const out = fadeOut(t, 27), inn = tw(t, 9.2, .5), o = inn * out, dy = lerp(30, 0, inn);
+    put(cL, CARD_L.x, CARD_L.y + dy, o, 1, pulse(t, 11.8));
+    put(cR, CARD_R.x, CARD_R.y + dy, o, 1, pulse(t, 14.2));
+    const landed = tw(t, 25.5, .4);
+    put(box1, BOX1.x, BOX1.y + dy, o, 1, pulse(t, 25.6)); put(box2, BOX2.x, BOX2.y + dy, o, 1, pulse(t, 25.6));
+    box1.firstChild.style.opacity = landed; box2.firstChild.style.opacity = landed;
+    const qo = o * (.65 + .25 * Math.sin(2 * Math.PI * t / 2.4)) * (1 - tw(t, 25.1, .4));       // soft "?" pulse
+    put(q1, BOX1.x + 80 - q1._w / 2, BOX1.y + 80 - q1._h / 2 + dy, qo);
+    put(q2, BOX2.x + 80 - q2._w / 2, BOX2.y + 80 - q2._h / 2 + dy, qo);
+    // copies of 10 and 7 fly from the equation into the cards
+    const fly = (el, from, to, t0) => {
+      const u = tw(t, t0, .6);
+      put(el, lerp(from.x, to.x, u), lerp(from.y, to.y, u), (t >= t0 ? 1 : 0) * out, 1, pulse(t, t0 + .6));
+    };
+    fly(v10, E1.n10.r, cL._slot, 11.2); fly(v7, E1.n7.r, cR._slot, 13.6);
+
+    // card A: 1 and 10 → wrong
+    const aIn = tw(t, 17.4, .5), aOut = tw(t, 20.7, .5);
+    put(tA, TRIAL.x + lerp(200, 0, aIn) - 200 * aOut, TRIAL.y, aIn * (1 - aOut));
+    tA.querySelector('.pr').style.opacity = tw(t, 18.3, .4);
+    tA.querySelector('.mk').style.opacity = tw(t, 19.3, .4);
+    tA.querySelector('.mk').style.transform = `scale(${pulse(t, 19.3).toFixed(4)})`;
+    tA.querySelector('.ov').style.opacity = tw(t, 19.3, .4);
+    // card B: 2 and 5 → correct
+    const bIn = tw(t, 22.3, .5);
+    put(tB, TRIAL.x + lerp(200, 0, bIn), TRIAL.y, bIn * out, 1, pulse(t, 23.9));
+    tB.querySelector('.pr').style.opacity = tw(t, 23.1, .4);
+    tB.querySelector('.mk').style.opacity = tw(t, 23.9, .4);
+    tB.querySelector('.ov').style.opacity = tw(t, 23.9, .4);
+    // 2 and 5 drop into the boxes
+    const drop = (el, from, bx) => {
+      const u = tw(t, 25.0, .6), s = lerp(2 / 3, 1, u);
+      const tx = bx.x + 80 - el._w / 2, ty = bx.y + 80 - el._h / 2;
+      put(el, lerp(from.x, tx, u), lerp(from.y, ty, u), (t >= 25.0 ? 1 : 0) * out, s, pulse(t, 25.6));
+    };
+    drop(n2, tB._s2, BOX1); drop(n5, tB._s5, BOX2);
+  }
+
+  /* scenes 4–5: brackets + labels, then the answer line */
+  {
+    const out = fadeOut(t, 46);
+    const bt = tw(t, 34.2, .5), bl = tw(t, 35.0, .5);
+    put(brTop, RX - 6, RY - 52 - 30 * (1 - bt), bt * out);
+    put(brLeft, RX - 52 - 30 * (1 - bl), RY - 6, bl * out);
+
+    const prodC = 960 - (L5.o1.r.x + L5.o3.r.x + L5.o3.r.w) / 2;     // product first sits centred…
+    const dx = prodC * (1 - tw(t, 41.0, .6));                         // …then slides right to make room
+    const u = tw(t, 38.5, .7), s = lerp(2 / 3, 1, u), pu = pulse(t, 39.7) * pulse(t, 42.8);
+    const g = tw(t, 42.8, .5);
+    // the edge labels ARE the factors: they lift off the rectangle and become (x + 2)(x + 5)
+    put(L5.fb.el, lerp(labTop.l.r.x, L5.fb.r.x + dx, u), lerp(labTop.l.r.y - 30 * (1 - bt), L5.fb.r.y, u), bt * out, s, pu);
+    put(L5.fa.el, lerp(labLeft.l.r.x - 30 * (1 - bl), L5.fa.r.x + dx, u), lerp(labLeft.l.r.y, L5.fa.r.y, u), bl * out, s, pu);
+    for (const k of ['o1', 'o2', 'o3']) putR(L5[k], tw(t, 39.1, .4) * out, dx, 0, pu);
+    for (const k of L5_RIGHT) glow(L5[k].el, g);
+    const li = tw(t, 41.4, .5);
+    for (const k of L5_LEFT) putR(L5[k], li * out, -30 * (1 - li), 0);
+    put(labTop.l.el, 0, 0, 0); put(labLeft.l.el, 0, 0, 0);            // layout helpers only
+  }
+
+  /* scene 6: check by multiplying out */
+  {
+    const o = fadeIn(t, 46) * fadeOut(t, 56);
+    for (const it of items(F6)) { putR(it, o); glow(it.el, 0); }
+    arcs.forEach(A => {
+      const u = tw(t, A.t0, .5);
+      A.g.style.visibility = o > .002 && t >= A.t0 ? 'visible' : 'hidden'; A.g.style.opacity = o * .95;
+      A.p.style.strokeDashoffset = (A.len * (1 - u)).toFixed(2);
+      A.head.style.opacity = tw(t, A.t0 + .4, .2);
+    });
+    // the two terms being multiplied glow softly while their arrow draws
+    for (const it of [F6.x1, F6.n2, F6.x2, F6.n5]) {
+      let g = 0; for (const A of arcs) if (A.a === it || A.b === it) g = Math.max(g, Math.sin(Math.PI * lin(t, A.t0, .8)));
+      glow(it.el, g * .9);
+    }
+    const m = tw(t, 51.4, .6);                                         // 5x and 2x merge into 7x
+    const at = (k, i) => { const a = RA[k].r, b = (RB[k] || RB.s7).r; return [lerp(a.x, b.x, m), a.y]; };
+    const res = (k, t0, extra = 1) => {
+      const a = tw(t, t0, .5), [x, y] = at(k);
+      put(RA[k].el, x, y - 40 * (1 - a), a * o * extra);
+    };
+    res('x2', arcs[0].t0 + .35);
+    res('pA', arcs[1].t0 + .35); res('a5', arcs[1].t0 + .35, 1 - tw(t, 51.8, .25));
+    res('pB', arcs[2].t0 + .35, 1 - tw(t, 51.4, .3)); res('a2', arcs[2].t0 + .35, 1 - tw(t, 51.8, .25));
+    res('pC', arcs[3].t0 + .35); res('n10', arcs[3].t0 + .35);
+    putR(RB.s7, tw(t, 51.8, .25) * o, 0, 0, pulse(t, 52.0));
+    const fin = tw(t, 53.6, .5);
+    putR(RB.eq, fin * o, -30 * (1 - fin), 0);
+    put(ck6, RB.ck.r.x + 30, RB.ck.r.y + 12, popO(t, 53.9) * o, popS(t, 53.9));
+    for (const k of ['x2', 'pA', 's7', 'pC', 'n10', 'ck', 'eq']) if (!['s7', 'eq'].includes(k)) put(RB[k].el, 0, 0, 0);
+  }
+
+  /* scene 7: watch the signs */
+  {
+    const out = fadeOut(t, 65), e = tw(t, 56.3, .5) * out;
+    for (const it of items(E7)) putR(it, e);
+    glow(E7.m.el, tw(t, 57.2, .4) * (1 - tw(t, 61.4, .5)));
+    put(warnEl, E7.m.r.x + E7.m.r.w + 14, E7.m.r.y - 4, popO(t, 57.5) * out, popS(t, 57.5));
+    const inn = tw(t, 58.3, .5), o = inn * out, dy = lerp(30, 0, inn);
+    put(c7L, CARD_L.x, CARD_L.y + dy, o); put(c7R, CARD_R.x, CARD_R.y + dy, o);
+    const ok = tw(t, 60.8, .4);
+    put(box71, BOX1.x, BOX1.y + dy, o, 1, pulse(t, 60.8)); put(box72, BOX2.x, BOX2.y + dy, o, 1, pulse(t, 60.8));
+    box71.firstChild.style.opacity = ok; box72.firstChild.style.opacity = ok;
+    const qo = o * (.65 + .25 * Math.sin(2 * Math.PI * t / 2.4)) * (1 - tw(t, 59.8, .3));
+    put(q71, BOX1.x + 80 - q71._w / 2, BOX1.y + 80 - q71._h / 2 + dy, qo);
+    put(q72, BOX2.x + 80 - q72._w / 2, BOX2.y + 80 - q72._h / 2 + dy, qo);
+    const dropIn = (el, bx, t0) => {
+      const u = tw(t, t0, .5);
+      put(el, bx.x + 80 - el._w / 2, bx.y + 80 - el._h / 2 - 70 * (1 - u), u * out, 1, pulse(t, 60.8));
+    };
+    dropIn(m5, BOX1, 59.8); dropIn(mNeg2, BOX2, 60.1);
+    put(ck71, BOX1.x + 122, BOX1.y - 22, popO(t, 60.8) * out, popS(t, 60.8));
+    put(ck72, BOX2.x + 122, BOX2.y - 22, popO(t, 60.8) * out, popS(t, 60.8));
+    const l = tw(t, 62.3, .5);
+    for (const it of items(L7)) putR(it, l * out, 0, 30 * (1 - l), pulse(t, 62.8));
+  }
+
+  /* scene 8: recap */
+  {
+    const inn = fadeIn(t, 65);
+    for (const L of LIST) {
+      const a = tw(t, L.t0, .5) * inn, dx = -30 * (1 - tw(t, L.t0, .5));
+      put(L.chip, 490 + dx, L.y - 42, a); put(L.text, 610 + dx, L.y - L.text._h / 2, a);
+      put(L.ck, 1370, L.y - 36, popO(t, L.t0 + .4), popS(t, L.t0 + .4));
+    }
+    put(finalCard, 960 - finalCard._w / 2, 720 - finalCard._h / 2, popO(t, 69.7), popS(t, 69.7));
+  }
+}
+
+/* ───────── boot ───────── */
+const RENDER = new URLSearchParams(location.search).has('render');
+window.renderAt = render;
+window.ready = (async () => {
+  await Promise.all([document.fonts.load('700 64px Comfortaa', 'x²+−×=10'), document.fonts.load('700 64px Comfortaa', 'γινόμενο άθροισμα')]);
+  await document.fonts.ready;
+  measure();
+  segs.forEach(s => { s.el._r = rel(s.el); });
+  render(0);
+  if (RENDER) return true;
+  // preview player: fit to window, play in real time; ?t=12.5 freezes on a moment
+  const fit = () => { const k = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `translate(${(innerWidth - 1920 * k) / 2}px,${(innerHeight - 1080 * k) / 2}px) scale(${k})`; };
+  fit(); addEventListener('resize', fit);
+  const fixed = new URLSearchParams(location.search).get('t');
+  if (fixed !== null) { render(parseFloat(fixed)); return true; }
+  const start = performance.now();
+  const loop = now => { render(Math.min(DURATION, (now - start) / 1000)); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  return true;
+})();
+</script>
+</body>
+</html>
