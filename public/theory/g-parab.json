@@ -46,7 +46,7 @@
     },
     {
      "type": "example",
-     "html": "<p>Να παραστήσεις τις f(x) = <span class=\"fr\"><span>1</span><span>2</span></span>x² και g(x) = −<span class=\"fr\"><span>1</span><span>2</span></span>x². Να βρεις Π.Ο., Π.Τ., κορυφή και άξονα για την f.</p>",
+     "html": "<p>Να παραστήσεις τις f(x) = <span class=\"fr\"><span>1</span><span>2</span></span>x² και g(x) = −<span class=\"fr\"><span>1</span><span>2</span></span>x². Για την f να βρεις το πεδίο ορισμού (Π.Ο.), το πεδίο τιμών (Π.Τ.), την κορυφή και τον άξονα συμμετρίας.</p>",
      "steps": [
       "Φτιάχνουμε πίνακα τιμών για την f: x = −2, −1, 0, 1, 2 δίνει f(x) = 2, <span class=\"fr\"><span>1</span><span>2</span></span>, 0, <span class=\"fr\"><span>1</span><span>2</span></span>, 2.",
       "Σχεδιάζουμε τα σημεία και τα ενώνουμε με ομαλή καμπύλη. Η g έχει τις αντίθετες τιμές.",
@@ -69,6 +69,7 @@
     },
     {
      "type": "warn",
+     "title": "Δύο λύσεις",
      "html": "<p>Όταν λύνουμε x² = κάποιος αριθμός θετικός, έχουμε <b>δύο</b> λύσεις: x = ± √(αριθμός). Τα δύο σημεία της παραβολής είναι συμμετρικά ως προς τον άξονα.</p>"
     },
     {
@@ -80,7 +81,7 @@
       "Άρα x = ± <span class=\"fr\"><span>3</span><span>4</span></span>: δύο λύσεις.",
       "Τα σημεία είναι τα (<span class=\"fr\"><span>3</span><span>4</span></span>, <span class=\"fr\"><span>3</span><span>16</span></span>) και (−<span class=\"fr\"><span>3</span><span>4</span></span>, <span class=\"fr\"><span>3</span><span>16</span></span>).",
       "(δ) Βάζουμε το Β: 27 = <span class=\"fr\"><span>1</span><span>3</span></span>(κ + 1)², άρα (κ + 1)² = 81.",
-      "(κ + 1)² − 9² = 0, δηλαδή (κ + 10)(κ − 8) = 0. Άρα κ = −10 ή κ = 8."
+      "Άρα κ + 1 = 9 ή κ + 1 = −9, δηλαδή κ = 8 ή κ = −10."
      ]
     }
    ]

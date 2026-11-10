@@ -108,7 +108,7 @@
     {
      "type": "note",
      "title": "Μέθοδος παραλληλογράμμου",
-     "html": "<p>Μέθοδος παραλληλογράμμου: σχεδιάζουμε <span class=\"vec\">ΑΒ</span> = <span class=\"vec\">α</span> και <span class=\"vec\">ΑΓ</span> = <span class=\"vec\">β</span> με κοινή αρχή Α. Φτιάχνουμε το παραλληλόγραμμο ΑΒΔΓ. Το <span class=\"vec\">ΑΔ</span> είναι το άθροισμα.</p>"
+     "html": "<p>Σχεδιάζουμε <span class=\"vec\">ΑΒ</span> = <span class=\"vec\">α</span> και <span class=\"vec\">ΑΓ</span> = <span class=\"vec\">β</span> με κοινή αρχή Α. Φτιάχνουμε το παραλληλόγραμμο ΑΒΔΓ. Το <span class=\"vec\">ΑΔ</span> είναι το άθροισμα.</p>"
     },
     {
      "type": "rule",
