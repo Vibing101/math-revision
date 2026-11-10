@@ -134,6 +134,10 @@ function stopSpeak() {
 /** Keys (see crates/quiz-core/src/theory.rs) for what is on screen in this card: its text and the steps shown so far. */
 function listenKeys(btn, card) {
   const base = btn.dataset.ak, keys = [base];
+  if (card.classList.contains('explore')) { // the situation, then whatever has been shown so far, in order
+    card.querySelectorAll('[data-k]:not([hidden])').forEach((el) => { if (el.dataset.k !== base) keys.push(el.dataset.k); });
+    return keys;
+  }
   card.querySelectorAll('.tsteps li').forEach((li, n) => { if (!li.hidden) keys.push(`${base}:${n}`); });
   return keys;
 }
