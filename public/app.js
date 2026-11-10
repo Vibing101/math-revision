@@ -188,6 +188,14 @@ function theoryCard(c, key, fdone) {
   }
   return `<article class="tcard ${c.type}"><span class="tlabel">${CARD_LABEL[c.type] || ''}${c.title ? ': ' + esc(c.title) : ''}</span><div class="tbody">${c.html}</div>${listen}</article>`;
 }
+/* «Σκέψου πρώτα» (the Ministry model's investigation phase): a situation and a few questions to think about;
+   each answer is shown on request, and the link to the mathematics only after the last one. Data: section.explore. */
+function exploreHTML(ex, s) {
+  const listen = canListen() ? `<button class="btn ghost sm listen" type="button" aria-pressed="false" data-ak="${s}:x">${I('play')}<span>Άκουσε</span></button>` : '';
+  const qs = (ex.qs || []).map((u, i) => `<li><div class="eq" data-k="${s}:x:q${i}">${u.q}</div><button class="btn ghost sm" type="button" data-ea="${i}">Δες μια απάντηση</button><div class="ea" hidden data-k="${s}:x:a${i}">${u.a}</div></li>`).join('');
+  return `<article class="tcard explore"><span class="tlabel">Σκέψου πρώτα · Διερεύνηση</span><div class="tbody" data-k="${s}:x">${ex.html}</div>
+    <ol class="eqs">${qs}</ol>${ex.bridge ? `<div class="ebridge" hidden data-k="${s}:x:b">${ex.bridge}</div>` : ''}${listen}</article>`;
+}
 function theoryDone(id) { const th = THEORY[id], p = tprog(id); return th ? th.sections.filter((_, i) => p.sec[i] === '2').length : 0; }
 async function renderTheory(id) {
   const ch = CHAPTERS.find((c) => c.id === id);
@@ -205,7 +213,7 @@ async function renderTheory(id) {
   /* units: a card (with its section heading when it opens a section), and one self-check per section */
   let n = 0;
   const secHTML = th.sections.map((s, i) => {
-    const cards = s.cards.map((c, k) => { const fk = `${i}:${k}`; return `<div class="tu" data-u="${n++}">${k === 0 ? `<h2>${esc(s.title)}</h2>` : ''}${theoryCard(c, fk, (P.fade || {})[fk] || 0)}</div>`; }).join('');
+    const cards = s.cards.map((c, k) => { const fk = `${i}:${k}`; return `<div class="tu" data-u="${n++}">${k === 0 ? `<h2>${esc(s.title)}</h2>` : ''}${theoryCard(c, fk, (P.fade || {})[fk] || 0)}</div>${k === 0 && s.explore ? `<div class="tu" data-u="${n++}">${exploreHTML(s.explore, i)}</div>` : ''}`; }).join('');
     const rated = P.sec[i];
     const check = `<div class="tu" data-u="${n++}"><div class="tcard check" data-sec="${i}"><span class="tlabel">Έλεγχος</span>
       <p><b>Πώς σου φάνηκε η ενότητα «${esc(s.title)}»;</b></p>
@@ -253,6 +261,11 @@ async function renderTheory(id) {
       msg.textContent = 'Δεν πειράζει, έτσι μαθαίνουμε. Ξαναδιάβασε το παράδειγμα και τη λύση, βήμα βήμα.' + (next ? ' Μετά δοκίμασε το επόμενο.' : ' Μετά δοκίμασε ασκήσεις.');
       if (next) next.hidden = false;
     }
+  }));
+  app.querySelectorAll('.explore').forEach((box) => box.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ea]'); if (!b) return;
+    b.parentElement.querySelector('.ea').hidden = false; b.hidden = true;
+    if (![...box.querySelectorAll('.ea')].some((a) => a.hidden)) { const br = box.querySelector('.ebridge'); if (br) br.hidden = false; }
   }));
   app.querySelectorAll('.listen').forEach((b) => (b.onclick = () => speakCard(b, b.closest('.tcard'))));
   app.querySelectorAll('.tcard.check').forEach((box) => box.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => {
