@@ -171,6 +171,7 @@ function fadeHTML(c, key, done) {
     return `<article class="tcard fx${solved ? ' solved' : ''}" data-rung="${r}"${r > done ? ' hidden' : ''}>
       <span class="tlabel">Δοκίμασε εσύ ${r + 1} από ${rungs.length}${r === 0 ? ': το τελευταίο βήμα είναι δικό σου' : ': κάνε μόνος/η τα βήματα μετά το πρώτο'}</span>
       <div class="tbody">${u.html}</div><ol class="tsteps">${lis}</ol>
+      ${canListen() ? `<button class="btn ghost sm listen" type="button" aria-pressed="false" data-ak="${key}:r${r}">${I('play')}<span>Άκουσε</span></button>` : ''}
       ${solved ? '<p class="fmsg">✓ Το έκανες σωστά.</p>' : `<p class="fslot">Η σειρά σου: κάνε ${hide > 1 ? `τα ${hide} τελευταία βήματα` : 'το τελευταίο βήμα'} στο τετράδιό σου. Μετά πάτα «Δες τη λύση».</p>
       <div class="row"><button class="btn ghost sm" type="button" data-f="show">Δες τη λύση</button></div>
       <div class="row" hidden data-f-check><button class="btn sm" type="button" data-f="ok">Το έκανα σωστά</button><button class="btn ghost sm" type="button" data-f="no">Δεν μου βγήκε</button></div>
@@ -179,7 +180,7 @@ function fadeHTML(c, key, done) {
   return `<div class="fade" data-fk="${key}" data-total="${rungs.length}"${done === 0 && (c.steps || []).length > 1 ? ' hidden' : ''}><p class="flabel">Τώρα δοκίμασε εσύ${done >= rungs.length ? ' · ✓ ολοκληρώθηκε' : ''}</p>${body}</div>`;
 }
 function theoryCard(c, key, fdone) {
-  const listen = canSpeak ? `<button class="btn ghost sm listen" type="button" aria-pressed="false">${I('play')}<span>Άκουσε</span></button>` : '';
+  const listen = canListen() ? `<button class="btn ghost sm listen" type="button" aria-pressed="false" data-ak="${key}">${I('play')}<span>Άκουσε</span></button>` : '';
   if (c.type === 'example') {
     const steps = (c.steps || []).map((x, i) => `<li${i ? ' hidden' : ''}>${x}</li>`).join('');
     return `<article class="tcard ex"><span class="tlabel">Παράδειγμα</span><div class="tbody">${c.html}</div>
@@ -216,7 +217,7 @@ async function renderTheory(id) {
   const total = n;
   slot.outerHTML = `<div class="tbar"><div class="row"><span class="cnt" id="t-cnt" aria-live="polite"></span>${one ? '' : `<span class="cnt">Ενότητες που κατάλαβες: ${theoryDone(id)} από ${th.sections.length}</span>`}</div><div class="bar"><i id="t-bar"></i></div></div>
     <nav class="toc card" aria-label="Ενότητες">${th.sections.map((s, i) => `<a href="#th-${id}" data-s="${i}"${P.sec[i] === '2' ? ' class="done"' : ''}>${esc(s.title)}</a>`).join('')}</nav>
-    <div id="t-body" class="${one ? 'one' : ''}">${secHTML}</div>
+    <div id="t-body" data-ch="${id}" class="${one ? 'one' : ''}">${secHTML}</div>
     ${one ? `<div class="row tnav"><button class="btn ghost" id="t-prev" type="button">${I('back')}Πίσω</button><button class="btn big-btn" id="t-next" type="button">Επόμενο${I('next')}</button></div>` : ''}`;
   const units = [...app.querySelectorAll('.tu')];
   const show = (pos, scroll) => {

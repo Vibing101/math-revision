@@ -20,6 +20,17 @@ applyUI();
 /* ---------- settings dialog ---------- */
 const seg = (name, opts, cur, label) => `<div class="pseg" role="radiogroup" aria-label="${label}">${opts.map((o, i) => `<label class="segopt"><input type="radio" name="${name}" value="${i}"${i === cur ? ' checked' : ''}><span>${o}</span></label>`).join('')}</div>`;
 
+/** Reading voice and speed: the server's natural voices first, then the device's Greek voices. */
+function voiceFieldset() {
+  const nat = typeof NATURAL_TTS !== 'undefined' && NATURAL_TTS ? NATURAL.map((v) => [v.id, v.name]) : [];
+  const dev = typeof greekVoices === 'function' ? greekVoices().map((v) => [v.voiceURI, `${v.name} (συσκευής)`]) : [];
+  const opts = nat.concat(dev);
+  if (!opts.length) return '';
+  const cur = (typeof naturalVoice === 'function' && naturalVoice()) || (LV.voice && LV.voice.voiceURI) || opts[0][0];
+  return `<fieldset><legend>Φωνή ανάγνωσης</legend><select id="p-voice" aria-label="Φωνή ανάγνωσης">${opts.map(([id, name]) => `<option value="${esc(id)}"${id === cur ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></fieldset>
+  <fieldset><legend>Ταχύτητα ανάγνωσης</legend>${seg('rate', ['Αργά', 'Κανονικά', 'Γρήγορα'], speedIndex(), 'Ταχύτητα ανάγνωσης')}</fieldset>`;
+}
+
 function openPrefs() {
   let d = document.getElementById('prefs');
   if (!d) { d = document.createElement('dialog'); d.id = 'prefs'; d.className = 'prefs'; document.body.appendChild(d); }
@@ -28,6 +39,7 @@ function openPrefs() {
   <p class="muted">Διάλεξε ό,τι σε βοηθά. Οι επιλογές αποθηκεύονται μόνο σε αυτή τη συσκευή.</p>
   <fieldset><legend>Μέγεθος γραμμάτων</legend>${seg('size', ['Κανονικό', 'Μεγάλο', 'Πολύ μεγάλο'], UIP.size, 'Μέγεθος γραμμάτων')}</fieldset>
   <fieldset><legend>Απόσταση γραμμών</legend>${seg('space', ['Κανονική', 'Μεγαλύτερη'], UIP.space, 'Απόσταση γραμμών')}</fieldset>
+  ${voiceFieldset()}
   <label class="chk"><input type="checkbox" id="p-calm"${UIP.calm ? ' checked' : ''}><span><b>Ήρεμη λειτουργία</b><br><span class="muted">Κρύβει πόντους, σερί και σήματα και σταματά τα εφέ. Μένει μόνο η εργασία.</span></span></label>
   <label class="chk"><input type="checkbox" id="p-one"${UIP.one ? ' checked' : ''}><span><b>Θεωρία: μία κάρτα τη φορά</b><br><span class="muted">Η επόμενη κάρτα εμφανίζεται όταν πατήσεις «Επόμενο».</span></span></label>
   <fieldset><legend>Υπενθύμιση για διάλειμμα</legend>${seg('brk', ['Όχι', 'Κάθε 10΄', 'Κάθε 15΄', 'Κάθε 20΄'], [0, 10, 15, 20].indexOf(UIP.breakMin), 'Υπενθύμιση για διάλειμμα')}</fieldset>
@@ -36,7 +48,11 @@ function openPrefs() {
   d.onchange = () => {
     UIP.size = get('size'); UIP.space = get('space'); UIP.breakMin = [0, 10, 15, 20][get('brk')];
     UIP.calm = d.querySelector('#p-calm').checked; UIP.one = d.querySelector('#p-one').checked;
-    saveUI(); applyUI(); brkReset();
+    const vs = d.querySelector('#p-voice');
+    if (vs && typeof LV !== 'undefined') { LV.prefs.voice = vs.value; if (typeof pickVoice === 'function') pickVoice(); }
+    if (typeof LV !== 'undefined' && d.querySelector('input[name="rate"]:checked')) LV.prefs.rate = SPEEDS[get('rate')];
+    if (typeof saveLV === 'function') saveLV();
+    saveUI(); applyUI(); brkReset(); stopSpeak();
     if (location.hash.startsWith('#th-') && typeof route === 'function') route();
   };
   d.querySelector('#p-close').onclick = () => d.close();
@@ -90,32 +106,77 @@ function startBreak() {
   d.showModal();
 }
 
-/* ---------- read-aloud (the device's own voice) ---------- */
-const canSpeak = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+/* ---------- read-aloud ----------
+   The server says what is read (/api/theory-speech) and speaks it with the natural voices
+   (/api/theory-tts: every sentence is made once and kept). Without a natural voice, or when the
+   server cannot answer, the device's own Greek voice reads the same sentences. The voice and the
+   speed are the ones the pupil chose in «Προσαρμογή» (shared with the narrated lessons). */
+const canSpeak = typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined';
 const SPOKEN = [[/≤/g, ' μικρότερο ή ίσο του '], [/≥/g, ' μεγαλύτερο ή ίσο του '], [/≠/g, ' διάφορο του '], [/∉/g, ' δεν ανήκει στο '], [/∈/g, ' ανήκει στο '], [/⊆/g, ' υποσύνολο του '], [/∪/g, ' ένωση '], [/∩/g, ' τομή '], [/∅/g, ' κενό σύνολο '],
-  [/²/g, ' στο τετράγωνο'], [/³/g, ' στον κύβο'], [/√/g, ' τετραγωνική ρίζα του '], [/π/g, ' πι '], [/[−–]/g, ' μείον '], [/\+/g, ' συν '], [/[·×]/g, ' επί '], [/÷/g, ' διά '], [/=/g, ' ίσον '], [/\s+/g, ' ']];
+  [/²/g, ' στο τετράγωνο'], [/³/g, ' στον κύβο'], [/√/g, ' ρίζα '], [/[−–]/g, ' μείον '], [/\+/g, ' συν '], [/[·×]/g, ' επί '], [/÷/g, ' διά '], [/=/g, ' ίσον '], [/\s+/g, ' ']];
+/** Fallback text when the server cannot be reached: the card as it is on screen. */
 function spokenText(el) {
-  let t = [...el.querySelectorAll('li:not([hidden]), p')].map((x) => x.innerText).join('. ') || el.innerText;
+  let t = [...el.querySelectorAll('.tbody p, .tbody li, .tsteps li:not([hidden])')].map((x) => x.innerText).join('. ') || el.innerText;
   for (const [re, to] of SPOKEN) t = t.replace(re, to);
   return t;
 }
-let speakingBtn = null;
+/** A listen button makes sense when the device can speak or the site has natural voices. */
+const canListen = () => canSpeak || (typeof NATURAL_TTS !== 'undefined' && NATURAL_TTS);
+const SPEEDS = [0.85, 1, 1.2];
+const speedIndex = () => { const r = (LV.prefs && LV.prefs.rate) || 1; return r < 0.95 ? 0 : r > 1.1 ? 2 : 1; };
+const spk = { token: 0, btn: null, audio: null };
 function stopSpeak() {
-  if (!canSpeak) return;
-  speechSynthesis.cancel();
-  if (speakingBtn) { speakingBtn.setAttribute('aria-pressed', 'false'); speakingBtn.lastChild.textContent = 'Άκουσε'; speakingBtn = null; }
+  spk.token++;
+  if (spk.audio) { spk.audio.onended = spk.audio.onerror = null; spk.audio.pause(); }
+  if (canSpeak) speechSynthesis.cancel();
+  if (spk.btn) { spk.btn.setAttribute('aria-pressed', 'false'); spk.btn.lastChild.textContent = 'Άκουσε'; spk.btn = null; }
 }
-function speakCard(btn, el) {
-  const same = speakingBtn === btn;
+/** Keys (see crates/quiz-core/src/theory.rs) for what is on screen in this card: its text and the steps shown so far. */
+function listenKeys(btn, card) {
+  const base = btn.dataset.ak, keys = [base];
+  card.querySelectorAll('.tsteps li').forEach((li, n) => { if (!li.hidden) keys.push(`${base}:${n}`); });
+  return keys;
+}
+async function speechParts(ch, key) {
+  const r = await fetch(`/api/theory-speech?ch=${encodeURIComponent(ch)}&key=${encodeURIComponent(key)}`);
+  if (!r.ok) throw new Error('speech');
+  return (await r.json()).parts;
+}
+async function speakCard(btn, card) {
+  const same = spk.btn === btn;
   stopSpeak();
   if (same) return;
-  const u = new SpeechSynthesisUtterance(spokenText(el));
-  const v = speechSynthesis.getVoices().find((x) => x.lang.toLowerCase().startsWith('el'));
-  if (v) u.voice = v;
-  u.lang = 'el-GR'; u.rate = 0.9;
-  u.onend = u.onerror = () => { if (speakingBtn === btn) stopSpeak(); };
-  speakingBtn = btn; btn.setAttribute('aria-pressed', 'true'); btn.lastChild.textContent = 'Στοπ';
-  speechSynthesis.speak(u);
+  const my = ++spk.token, rate = SPEEDS[speedIndex()];
+  spk.btn = btn; btn.setAttribute('aria-pressed', 'true'); btn.lastChild.textContent = 'Στοπ';
+  const ch = btn.closest('[data-ch]').dataset.ch;
+  const nat = typeof naturalVoice === 'function' ? naturalVoice() : null;
+  let items = [];
+  try {
+    for (const key of listenKeys(btn, card)) (await speechParts(ch, key)).forEach((text, k) => items.push({ text, url: `/api/theory-tts?ch=${encodeURIComponent(ch)}&key=${encodeURIComponent(key)}&k=${k}&v=${nat ? nat.slice(3) : ''}` }));
+  } catch (e) { items = [{ text: spokenText(card), url: null }]; }
+  if (my !== spk.token) return;
+  const device = (text, next) => {
+    if (!canSpeak) return next();
+    const u = new SpeechSynthesisUtterance(text), v = typeof LV !== 'undefined' && LV.voice;
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'el-GR';
+    u.rate = 0.95 * rate; u.onend = next; u.onerror = (e) => { if (e.error !== 'interrupted' && e.error !== 'canceled') next(); };
+    speechSynthesis.speak(u);
+  };
+  const play = (i) => {
+    if (my !== spk.token) return;
+    if (i >= items.length) return stopSpeak();
+    const next = () => play(i + 1), it = items[i];
+    if (nat && it.url) {
+      const a = spk.audio || (spk.audio = new Audio());
+      let failed = false;
+      const fail = () => { if (failed || my !== spk.token) return; failed = true; a.onended = a.onerror = null; device(it.text, next); };
+      a.onended = () => { if (my === spk.token) next(); };
+      a.onerror = fail; a.src = it.url; a.playbackRate = rate;
+      a.play().catch(fail);
+      if (items[i + 1] && items[i + 1].url) fetch(items[i + 1].url).catch(() => {}); // have the next sentence ready
+    } else device(it.text, next);
+  };
+  play(0);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountPrefsButton); else mountPrefsButton();

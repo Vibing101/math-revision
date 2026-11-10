@@ -73,6 +73,28 @@
       "Γιατί: έχουν την ίδια διεύθυνση (απέναντι πλευρές), την ίδια φορά και το ίδιο μέτρο (πλευρές τετραγώνου).",
       "(γ) Τα <span class=\"vec\">ΓΒ</span> και <span class=\"vec\">ΑΔ</span> έχουν την ίδια διεύθυνση και αντίθετη φορά (αντίρροπα).",
       "Έχουν και το ίδιο μέτρο, άρα είναι αντίθετα: <span class=\"vec\">ΓΒ</span> = −<span class=\"vec\">ΑΔ</span>."
+     ],
+     "fade": [
+      {
+       "html": "<p>Στο ορθογώνιο ΕΖΗΘ (Ε πάνω αριστερά, Ζ πάνω δεξιά, Η κάτω δεξιά, Θ κάτω αριστερά): (α) γράψε δύο διανύσματα με αρχή το Η, (β) ένα διάνυσμα ίσο με το <span class=\"vec\">ΘΗ</span>, (γ) τη σχέση των <span class=\"vec\">ΖΕ</span> και <span class=\"vec\">ΗΘ</span>.</p>",
+       "steps": [
+        "Για κάθε ερώτημα ελέγχουμε τρία πράγματα: διεύθυνση, φορά και μέτρο.",
+        "(α) Τα <span class=\"vec\">ΗΖ</span> και <span class=\"vec\">ΗΘ</span> έχουν αρχή το Η.",
+        "(β) Το <span class=\"vec\">ΕΖ</span> είναι ίσο με το <span class=\"vec\">ΘΗ</span>. Γιατί: οι ΕΖ και ΘΗ είναι απέναντι πλευρές, άρα έχουν την ίδια διεύθυνση και το ίδιο μέτρο, και τα δύο δείχνουν προς τα δεξιά, άρα έχουν και την ίδια φορά.",
+        "(γ) Τα <span class=\"vec\">ΖΕ</span> και <span class=\"vec\">ΗΘ</span> είναι απέναντι πλευρές, άρα έχουν την ίδια διεύθυνση και το ίδιο μέτρο. Και τα δύο δείχνουν προς τα αριστερά, άρα έχουν την ίδια φορά.",
+        "Άρα τα <span class=\"vec\">ΖΕ</span> και <span class=\"vec\">ΗΘ</span> είναι ίσα: <span class=\"vec\">ΖΕ</span> = <span class=\"vec\">ΗΘ</span>."
+       ]
+      },
+      {
+       "html": "<p>Στο τετράγωνο ΕΖΗΘ (Ε πάνω αριστερά, Ζ πάνω δεξιά, Η κάτω δεξιά, Θ κάτω αριστερά): (α) γράψε δύο διανύσματα με αρχή το Θ, (β) ένα διάνυσμα ίσο με το <span class=\"vec\">ΖΗ</span>, (γ) αν τα <span class=\"vec\">ΕΖ</span> και <span class=\"vec\">ΖΗ</span> είναι ίσα.</p>",
+       "steps": [
+        "Για κάθε ερώτημα ελέγχουμε τρία πράγματα: διεύθυνση, φορά και μέτρο.",
+        "(α) Τα <span class=\"vec\">ΘΕ</span> και <span class=\"vec\">ΘΗ</span> έχουν αρχή το Θ.",
+        "(β) Το <span class=\"vec\">ΕΘ</span> είναι ίσο με το <span class=\"vec\">ΖΗ</span>. Γιατί: είναι απέναντι πλευρές, άρα έχουν την ίδια διεύθυνση και το ίδιο μέτρο, και τα δύο δείχνουν προς τα κάτω, άρα έχουν και την ίδια φορά.",
+        "(γ) Τα <span class=\"vec\">ΕΖ</span> και <span class=\"vec\">ΖΗ</span> έχουν το ίδιο μέτρο, γιατί οι πλευρές του τετραγώνου είναι ίσες. Όμως η <span class=\"vec\">ΕΖ</span> είναι οριζόντια και η <span class=\"vec\">ΖΗ</span> κατακόρυφη, άρα έχουν διαφορετική διεύθυνση.",
+        "Άρα τα <span class=\"vec\">ΕΖ</span> και <span class=\"vec\">ΖΗ</span> δεν είναι ίσα, παρόλο που έχουν το ίδιο μέτρο."
+       ]
+      }
      ]
     }
    ]
@@ -133,6 +155,29 @@
       "(β) Αλλάζουμε σειρά: <span class=\"vec\">ΑΓ</span> + <span class=\"vec\">ΔΑ</span> = <span class=\"vec\">ΔΑ</span> + <span class=\"vec\">ΑΓ</span>.",
       "Τώρα είναι διαδοχικά: <span class=\"vec\">ΔΑ</span> + <span class=\"vec\">ΑΓ</span> = <span class=\"vec\">ΔΓ</span>.",
       "(γ) Τα <span class=\"vec\">ΒΟ</span> και <span class=\"vec\">ΟΔ</span> είναι διαδοχικά. <span class=\"vec\">ΒΟ</span> + <span class=\"vec\">ΟΔ</span> = <span class=\"vec\">ΒΔ</span>."
+     ],
+     "fade": [
+      {
+       "html": "<p>Στο τετράγωνο ΕΖΗΘ με κέντρο Κ (Ε πάνω αριστερά, Ζ πάνω δεξιά, Η κάτω δεξιά, Θ κάτω αριστερά) βρες το διάνυσμα: (α) <span class=\"vec\">ΕΖ</span>+<span class=\"vec\">ΖΗ</span>, (β) <span class=\"vec\">ΕΗ</span>+<span class=\"vec\">ΘΕ</span>, (γ) <span class=\"vec\">ΖΚ</span>+<span class=\"vec\">ΚΘ</span>.</p>",
+       "steps": [
+        "Για να προσθέσουμε, τα διανύσματα πρέπει να είναι διαδοχικά: το τέλος του πρώτου είναι η αρχή του δεύτερου. Αν δεν είναι, αλλάζουμε σειρά.",
+        "(α) Τα <span class=\"vec\">ΕΖ</span> και <span class=\"vec\">ΖΗ</span> είναι διαδοχικά. <span class=\"vec\">ΕΖ</span> + <span class=\"vec\">ΖΗ</span> = <span class=\"vec\">ΕΗ</span>.",
+        "(β) Αλλάζουμε σειρά: <span class=\"vec\">ΕΗ</span> + <span class=\"vec\">ΘΕ</span> = <span class=\"vec\">ΘΕ</span> + <span class=\"vec\">ΕΗ</span>.",
+        "Τώρα είναι διαδοχικά: <span class=\"vec\">ΘΕ</span> + <span class=\"vec\">ΕΗ</span> = <span class=\"vec\">ΘΗ</span>.",
+        "(γ) Τα <span class=\"vec\">ΖΚ</span> και <span class=\"vec\">ΚΘ</span> είναι διαδοχικά. Άρα <span class=\"vec\">ΖΚ</span> + <span class=\"vec\">ΚΘ</span> = <span class=\"vec\">ΖΘ</span>. Τελικά: (α) <span class=\"vec\">ΕΗ</span>, (β) <span class=\"vec\">ΘΗ</span>, (γ) <span class=\"vec\">ΖΘ</span>."
+       ]
+      },
+      {
+       "html": "<p>Στο ορθογώνιο ΕΖΗΘ με κέντρο Κ (Ε πάνω αριστερά, Ζ πάνω δεξιά, Η κάτω δεξιά, Θ κάτω αριστερά) βρες το διάνυσμα: (α) <span class=\"vec\">ΕΖ</span>+<span class=\"vec\">ΖΗ</span>+<span class=\"vec\">ΗΘ</span>, (β) <span class=\"vec\">ΗΚ</span>+<span class=\"vec\">ΕΗ</span>, (γ) <span class=\"vec\">ΕΚ</span>+<span class=\"vec\">ΚΕ</span>.</p>",
+       "steps": [
+        "Για να προσθέσουμε, τα διανύσματα πρέπει να είναι διαδοχικά: το τέλος του πρώτου είναι η αρχή του δεύτερου. Αν δεν είναι, αλλάζουμε σειρά.",
+        "(α) Τα τρία διανύσματα είναι διαδοχικά, άρα το άθροισμα πάει από την αρχή του πρώτου ως το τέλος του τελευταίου. <span class=\"vec\">ΕΖ</span> + <span class=\"vec\">ΖΗ</span> + <span class=\"vec\">ΗΘ</span> = <span class=\"vec\">ΕΘ</span>.",
+        "(β) Αλλάζουμε σειρά: <span class=\"vec\">ΗΚ</span> + <span class=\"vec\">ΕΗ</span> = <span class=\"vec\">ΕΗ</span> + <span class=\"vec\">ΗΚ</span>.",
+        "Τώρα είναι διαδοχικά: <span class=\"vec\">ΕΗ</span> + <span class=\"vec\">ΗΚ</span> = <span class=\"vec\">ΕΚ</span>.",
+        "(γ) Τα <span class=\"vec\">ΕΚ</span> και <span class=\"vec\">ΚΕ</span> είναι διαδοχικά και το τέλος του δεύτερου είναι η αρχή του πρώτου (Ε).",
+        "Άρα <span class=\"vec\">ΕΚ</span> + <span class=\"vec\">ΚΕ</span> = 0, το μηδενικό διάνυσμα."
+       ]
+      }
      ]
     },
     {
@@ -145,6 +190,28 @@
       "Το αντίθετο του <span class=\"vec\">ΟΔ</span> είναι το <span class=\"vec\">ΟΒ</span>. Άρα <span class=\"vec\">ΑΟ</span> + <span class=\"vec\">ΟΒ</span> = <span class=\"vec\">ΑΒ</span>.",
       "(ε) <span class=\"vec\">ΑΒ</span> − <span class=\"vec\">ΑΓ</span> = <span class=\"vec\">ΑΒ</span> + (−<span class=\"vec\">ΑΓ</span>) = <span class=\"vec\">ΑΒ</span> + <span class=\"vec\">ΓΑ</span>.",
       "Αλλάζουμε σειρά: <span class=\"vec\">ΓΑ</span> + <span class=\"vec\">ΑΒ</span> = <span class=\"vec\">ΓΒ</span>."
+     ],
+     "fade": [
+      {
+       "html": "<p>Στο τετράγωνο ΕΖΗΘ με κέντρο Κ (Ε πάνω αριστερά, Ζ πάνω δεξιά, Η κάτω δεξιά, Θ κάτω αριστερά) βρες το διάνυσμα: (δ) <span class=\"vec\">ΕΚ</span> − <span class=\"vec\">ΚΘ</span>, (ε) <span class=\"vec\">ΕΖ</span> − <span class=\"vec\">ΕΗ</span>.</p>",
+       "steps": [
+        "Μετατρέπουμε τη διαφορά σε άθροισμα με το αντίθετο.",
+        "(δ) <span class=\"vec\">ΕΚ</span> − <span class=\"vec\">ΚΘ</span> = <span class=\"vec\">ΕΚ</span> + (−<span class=\"vec\">ΚΘ</span>).",
+        "Το αντίθετο του <span class=\"vec\">ΚΘ</span> είναι το <span class=\"vec\">ΚΖ</span>. Άρα <span class=\"vec\">ΕΚ</span> + <span class=\"vec\">ΚΖ</span> = <span class=\"vec\">ΕΖ</span>.",
+        "(ε) <span class=\"vec\">ΕΖ</span> − <span class=\"vec\">ΕΗ</span> = <span class=\"vec\">ΕΖ</span> + (−<span class=\"vec\">ΕΗ</span>) = <span class=\"vec\">ΕΖ</span> + <span class=\"vec\">ΗΕ</span>.",
+        "Αλλάζουμε σειρά: <span class=\"vec\">ΗΕ</span> + <span class=\"vec\">ΕΖ</span> = <span class=\"vec\">ΗΖ</span>. Τελικά: (δ) <span class=\"vec\">ΕΖ</span>, (ε) <span class=\"vec\">ΗΖ</span>."
+       ]
+      },
+      {
+       "html": "<p>Στο ορθογώνιο ΕΖΗΘ με κέντρο Κ (Ε πάνω αριστερά, Ζ πάνω δεξιά, Η κάτω δεξιά, Θ κάτω αριστερά) βρες το διάνυσμα: (δ) <span class=\"vec\">ΖΚ</span> − <span class=\"vec\">ΘΚ</span>, (ε) <span class=\"vec\">ΕΗ</span> − <span class=\"vec\">ΕΖ</span>.</p>",
+       "steps": [
+        "Μετατρέπουμε τη διαφορά σε άθροισμα με το αντίθετο.",
+        "(δ) <span class=\"vec\">ΖΚ</span> − <span class=\"vec\">ΘΚ</span> = <span class=\"vec\">ΖΚ</span> + (−<span class=\"vec\">ΘΚ</span>).",
+        "Το αντίθετο του <span class=\"vec\">ΘΚ</span> είναι το <span class=\"vec\">ΚΘ</span>. Άρα <span class=\"vec\">ΖΚ</span> + <span class=\"vec\">ΚΘ</span> = <span class=\"vec\">ΖΘ</span>.",
+        "(ε) <span class=\"vec\">ΕΗ</span> − <span class=\"vec\">ΕΖ</span> = <span class=\"vec\">ΕΗ</span> + (−<span class=\"vec\">ΕΖ</span>) = <span class=\"vec\">ΕΗ</span> + <span class=\"vec\">ΖΕ</span>.",
+        "Αλλάζουμε σειρά: <span class=\"vec\">ΖΕ</span> + <span class=\"vec\">ΕΗ</span> = <span class=\"vec\">ΖΗ</span>. Τελικά: (δ) <span class=\"vec\">ΖΘ</span>, (ε) <span class=\"vec\">ΖΗ</span>."
+       ]
+      }
      ]
     },
     {

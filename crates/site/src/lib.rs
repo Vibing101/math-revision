@@ -12,6 +12,8 @@
 //! | GET  /api/lesson?cat&seed&kind | narrated step lesson: kind=instr or kind=method   |
 //! | GET  /api/tts?…&step&k&v       | one lesson sentence as speech (Azure, cached)     |
 //! | GET  /api/video-tts?id&line&v  | one narration line of a `/video/` page as speech  |
+//! | GET  /api/theory-speech?ch&key | the sentences read aloud for a part of a theory page |
+//! | GET  /api/theory-tts?ch&key&k&v | one of those sentences as speech (same cache)     |
 //! | POST /api/teacher/login        | PIN → signed session token                        |
 //! | GET  /api/teacher/resources    | printable test and its solutions (token required) |
 //! | GET  /api/teacher/worksheet    | worksheet with answer key (token required)        |
@@ -266,6 +268,55 @@ async fn tts(req: Request, env: &Env) -> Result<Response> {
     speak(&req, env, &text, q.get("v").map(String::as_str)).await
 }
 
+/// The sentences read aloud for one part of a theory page. The page itself is a static asset;
+/// the browser only names the chapter and a key, so it cannot make the site speak other text.
+async fn theory_parts(
+    env: &Env,
+    q: &std::collections::HashMap<String, String>,
+) -> Option<Vec<String>> {
+    let ch = q.get("ch")?;
+    if !CHAPTERS.iter().any(|c| c.id == ch.as_str()) {
+        return None;
+    }
+    let mut res = env
+        .assets("ASSETS")
+        .ok()?
+        .fetch(format!("https://assets.local/theory/{ch}.json"), None)
+        .await
+        .ok()?;
+    if res.status_code() != 200 {
+        return None;
+    }
+    quiz_core::theory::parts(&res.text().await.ok()?, q.get("key")?)
+}
+
+async fn theory_speech(req: Request, env: &Env) -> Result<Response> {
+    let q = query(&req)?;
+    let Some(parts) = theory_parts(env, &q).await else {
+        return bad("δεν βρέθηκε", 404);
+    };
+    let mut res = json_res(&json!({ "parts": parts }), 200)?;
+    // The text changes only when the page is edited and deployed.
+    res.headers_mut()
+        .set("cache-control", "public, max-age=300")?;
+    Ok(res)
+}
+
+async fn theory_tts(req: Request, env: &Env) -> Result<Response> {
+    let q = query(&req)?;
+    let Some(parts) = theory_parts(env, &q).await else {
+        return bad("δεν βρέθηκε", 404);
+    };
+    let Some(text) = q
+        .get("k")
+        .and_then(|k| k.parse::<usize>().ok())
+        .and_then(|k| parts.get(k))
+    else {
+        return bad("δεν βρέθηκε", 404);
+    };
+    speak(&req, env, text, q.get("v").map(String::as_str)).await
+}
+
 async fn video_tts(req: Request, env: &Env) -> Result<Response> {
     let q = query(&req)?;
     let Some(text) = video_line(&q) else {
@@ -494,6 +545,8 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         })
         .get_async("/api/tts", |req, ctx| async move { tts(req, &ctx.env).await })
         .get_async("/api/video-tts", |req, ctx| async move { video_tts(req, &ctx.env).await })
+        .get_async("/api/theory-speech", |req, ctx| async move { theory_speech(req, &ctx.env).await })
+        .get_async("/api/theory-tts", |req, ctx| async move { theory_tts(req, &ctx.env).await })
         .post_async("/api/check", |mut req, _| async move {
             let Ok(body) = req.json::<CheckReq>().await else { return bad("μη έγκυρο αίτημα", 400) };
             match generate(&body.cat, body.seed) {

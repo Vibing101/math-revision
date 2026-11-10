@@ -1,0 +1,50 @@
+name: Warm theory audio
+
+# Optional. Every sentence of the theory pages is spoken once per voice, the first time someone plays it,
+# and then kept for good. This job plays them all in advance for one voice, so no pupil ever waits for a
+# sentence to be made. Run it after a deploy (Actions → Warm theory audio → Run workflow).
+# It reads the live site's /api/theory-tts, slowly, to stay inside the site's speech rate limit.
+on:
+  workflow_dispatch:
+    inputs:
+      voice:
+        description: Φωνή (e = Ελένη, k = Κώστας, m = Νέστορας, f = Αθηνά)
+        default: e
+      chapter:
+        description: Μόνο αυτό το κεφάλαιο (π.χ. synola). Κενό = όλα
+        default: ''
+      dry_run:
+        description: Μόνο μέτρηση, χωρίς κλήσεις (true / false)
+        default: 'true'
+
+permissions:
+  contents: read
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: List the sentences
+        run: |
+          cargo run -q -p quiz-core --release --example theory_speech -- public/theory > sentences.txt
+          if [ -n "${{ inputs.chapter }}" ]; then grep "^${{ inputs.chapter }} " sentences.txt > s2.txt || true; mv s2.txt sentences.txt; fi
+          echo "sentences: $(wc -l < sentences.txt), characters: $(awk '{n+=$4} END {print n}' sentences.txt)"
+      - name: Play every sentence once
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          VOICE: ${{ inputs.voice }}
+        run: |
+          ok=0; fail=0; streak=0
+          while read -r ch key k _; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "https://maths.savvy-des.com/api/theory-tts?ch=$ch&key=$key&k=$k&v=$VOICE")
+            if [ "$code" = 429 ]; then sleep 30; code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "https://maths.savvy-des.com/api/theory-tts?ch=$ch&key=$key&k=$k&v=$VOICE"); fi
+            if [ "$code" = 200 ]; then ok=$((ok+1)); streak=0; else fail=$((fail+1)); streak=$((streak+1)); echo "HTTP $code: $ch $key $k"; fi
+            if [ "$streak" -ge 20 ]; then echo "20 failures in a row: stopping (is the voice configured?)"; break; fi
+            sleep 0.7
+          done < sentences.txt
+          echo "done: $ok ok, $fail failed"
+          [ "$fail" -eq 0 ]
